@@ -2,6 +2,26 @@
 
 **TODO: Add description**
 
+```bash
+$ mix run -e "Linnerud.run"
+y_test:  [[191]]
+predict: [[165.69839452596122]]
+
+error:
+320.08561978195456
+320.08561978195456
+```
+
+```bash
+$ mix run -e "Boston.run"
+y_test:  [[24.0]]
+predict: [[25.26741625578046]]
+
+error:
+0.803171982708281
+0.803171982708281
+```
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
