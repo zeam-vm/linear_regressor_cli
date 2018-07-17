@@ -42,4 +42,13 @@ defmodule Boston do
 		IO.puts "error: "
 		IO.inspect error
 	end
+
+
+	def benchmark do
+		IO.puts (
+			:timer.tc(fn -> run end)
+			|> elem(0)
+			|> Kernel./(1000000)
+		)
+	end
 end
