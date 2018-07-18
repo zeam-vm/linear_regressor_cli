@@ -23,6 +23,7 @@ defmodule LinearRegressorCli.MixProject do
     [
 		{ :matrix,    "~> 0.3.2" }, 
 		{ :csv,       "~> 2.0.0" },
+    { :matrex,    "~> 0.6" },
     ]
   end
 end
