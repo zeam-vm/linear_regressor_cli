@@ -35,7 +35,7 @@ defmodule Linnerud do
 
 	def benchmark do
 		IO.puts (
-			:timer.tc(fn -> run end)
+			:timer.tc(fn -> run() end)
 			|> elem(0)
 			|> Kernel./(1000000)
 		)
