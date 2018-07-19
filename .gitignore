@@ -22,3 +22,8 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 linear_regressor_cli-*.tar
 
+# Ignore Rust libraries
+priv/
+
+# Ignore Cargo.lock
+Cargo.lock
