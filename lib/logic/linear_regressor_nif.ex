@@ -8,7 +8,7 @@ defmodule LinearRegressorNif do
 	## Examples
 
 	iex> LinearRegressorNif.add(1, 2)
-    	{:ok, 3}
+	{:ok, 3}
 	"""
 	def add(_a, _b), do: exit(:nif_not_loaded)
 
@@ -58,21 +58,29 @@ defmodule LinearRegressorNif do
         end )
     end
 
-	defp subtract_rows(r1, r2) when r1 == []  or  r2 == [], do: []
-	defp subtract_rows(r1, r2) do
+ 	@doc """
+ 	subtract_rows.
+
+	## Examples
+
+	iex> LinearRegressorNif.subtract_rows([4, 5, 6], [1, 2, 3])
+	[3, 3, 3]
+	"""
+	def subtract_rows(r1, r2) when r1 == []  or  r2 == [], do: []
+	def subtract_rows(r1, r2) do
 		[h1|t1] = r1
 		[h2|t2] = r2
 		[h1-h2] ++ subtract_rows(t1,t2)
 	end
 
-    defp dot_product(r1, _r2) when r1 == [], do: 0
-  	defp dot_product(r1, r2) do
+    def dot_product(r1, _r2) when r1 == [], do: 0
+  	def dot_product(r1, r2) do
     	[h1|t1] = r1
     	[h2|t2] = r2
     	(h1*h2) + dot_product(t1, t2)
 	end
-	defp emult_rows(r1, r2) when r1 == []  or  r2 == [], do: []
-	defp emult_rows(r1, r2) do
+	def emult_rows(r1, r2) when r1 == []  or  r2 == [], do: []
+	def emult_rows(r1, r2) do
 		[h1|t1] = r1
 		[h2|t2] = r2
 		[h1*h2] ++ emult_rows(t1,t2)
