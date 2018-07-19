@@ -65,6 +65,10 @@ defmodule LinearRegressorNif do
 
 	iex> LinearRegressorNif.subtract_rows([4, 5, 6], [1, 2, 3])
 	[3, 3, 3]
+
+	iex> LinearRegressorNif.subtract_rows([4.0, 5.0, 6.0], [1.0, 2.0, 3.0])
+	[3.0, 3.0, 3.0]
+
 	"""
 	def subtract_rows(r1, r2) when r1 == []  or  r2 == [], do: []
 	def subtract_rows(r1, r2) do
@@ -73,12 +77,38 @@ defmodule LinearRegressorNif do
 		[h1-h2] ++ subtract_rows(t1,t2)
 	end
 
+ 	@doc """
+ 	dot_product.
+
+	## Examples
+
+	iex> LinearRegressorNif.dot_product([1, 2, 3], [4, 5, 6])
+	32
+
+	iex> LinearRegressorNif.dot_product([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
+	32.0
+
+	"""
     def dot_product(r1, _r2) when r1 == [], do: 0
   	def dot_product(r1, r2) do
     	[h1|t1] = r1
     	[h2|t2] = r2
     	(h1*h2) + dot_product(t1, t2)
 	end
+
+
+ 	@doc """
+ 	dot_product.
+
+	## Examples
+
+	iex> LinearRegressorNif.emult_rows([1, 2, 3], [4, 5, 6])
+	[4, 10, 18]
+
+	iex> LinearRegressorNif.emult_rows([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
+	[4.0, 10.0, 18.0]
+
+	"""
 	def emult_rows(r1, r2) when r1 == []  or  r2 == [], do: []
 	def emult_rows(r1, r2) do
 		[h1|t1] = r1
