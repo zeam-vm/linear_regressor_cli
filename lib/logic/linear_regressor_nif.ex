@@ -18,7 +18,7 @@ defmodule LinearRegressorNif do
 	def cost( x, y, theta ) do
 		m = length( y )
 
-		hx_y = x 
+		hx_y = x
 			|> Matrix.mult( theta )
 			|> Matrix.sub( y )
 
@@ -35,10 +35,10 @@ defmodule LinearRegressorNif do
         tx = Matrix.transpose( x )
         size = Matrix.size( theta )
         a = Matrix.new( elem( size, 0 ), elem( size, 1 ), alpha * ( 1 / m ) )
-        
+
         0..iterations
         |> Enum.to_list
-        |> Enum.reduce( theta, fn( _iteration, theta ) -> 
+        |> Enum.reduce( theta, fn( _iteration, theta ) ->
             trans_theta = Matrix.transpose( theta )
             d = Enum.map(x, fn(row)->
             		Enum.map(trans_theta, &dot_product(row, &1))
@@ -57,6 +57,16 @@ defmodule LinearRegressorNif do
             |> Enum.map( fn({a,b})->subtract_rows(a,b) end)
         end )
     end
+
+    @doc """
+
+    ## Examples
+
+    iex> LinearRegressorNif.fit_nif([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [[4.0], [5.0], [6.0]], [[0.0], [0.0], [0.0]], 0.0000003, 10000); receive do l -> l end
+    [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
+
+    """
+    def fit_nif( _x, _y, _theta, _alpha, _iteration ), do: exit(:nif_not_loaded)
 
  	@doc """
  	subtract_rows.
