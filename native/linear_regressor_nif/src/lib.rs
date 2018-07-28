@@ -43,6 +43,7 @@ pub struct Matrix {
     pub col_max: usize,
     pub col_size: usize,
     pub col_shift: usize,
+    pub size: usize,
 }
 
 
@@ -109,7 +110,8 @@ impl Matrix {
                 row_max: row_max,
                 col_max: col_max,
                 col_size: col_size,
-                col_shift: col_shift}
+                col_shift: col_shift,
+                size: size,}
     }
 
     pub fn i(&self, row: usize, col: usize) -> usize {
@@ -145,6 +147,25 @@ impl Matrix {
     }
 }
 
+fn sub(x: &Matrix, y: &Matrix) -> Matrix {
+	let row_max = x.row_max;
+	let col_max = x.col_max;
+	let col_size = x.col_size;
+    let col_shift = x.col_shift;
+    let size = x.size;
+    let mut container: Vec<f64> = Vec::with_capacity(size);
+    (0..size).for_each(|i| {
+    	container.push(x.container[i] - y.container[i]);
+    });
+    Matrix{container: container,
+        row_max: row_max,
+        col_max: col_max,
+        col_size: col_size,
+        col_shift: col_shift,
+        size: size,}
+}
+
+
 fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let pid = env.pid();
     let mut my_env = OwnedEnv::new();
@@ -167,9 +188,9 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 let theta = Matrix::new(tuple.2.decode::<Vec<Vec<f64>>>()?);
                 let alpha: f64 = tuple.3;
                 let iteration: i64 = tuple.4;
-
+                let z = sub(&x, &x);
                 //Ok(tuple.0)
-                Ok(x.to_vec().encode(env))
+                Ok(z.to_vec().encode(env))
             })();
             match result {
                 Err(_err) => env.error_tuple("test failed".encode(env)),
