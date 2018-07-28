@@ -163,8 +163,8 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
             let result: NifResult<Term> = (|| {
                 let tuple = saved_list.load(env).decode::<(Term, Term, Term, f64, i64)>()?;
                 let x = Matrix::new(tuple.0.decode::<Vec<Vec<f64>>>()?);
-                let y = tuple.1.decode::<Vec<Vec<f64>>>()?;
-                let theta = tuple.2.decode::<Vec<Vec<f64>>>()?;
+                let y = Matrix::new(tuple.1.decode::<Vec<Vec<f64>>>()?);
+                let theta = Matrix::new(tuple.2.decode::<Vec<Vec<f64>>>()?);
                 let alpha: f64 = tuple.3;
                 let iteration: i64 = tuple.4;
 
