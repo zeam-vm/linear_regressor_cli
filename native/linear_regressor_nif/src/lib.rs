@@ -145,6 +145,10 @@ impl Matrix {
         });
         ret
     }
+
+	pub fn length(&self) -> usize {
+		self.row_max
+	}
 }
 
 fn sub(x: &Matrix, y: &Matrix) -> Matrix {
@@ -188,9 +192,9 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 let theta = Matrix::new(tuple.2.decode::<Vec<Vec<f64>>>()?);
                 let alpha: f64 = tuple.3;
                 let iteration: i64 = tuple.4;
-                let z = sub(&x, &x);
+                let z = y.length();
                 //Ok(tuple.0)
-                Ok(z.to_vec().encode(env))
+                Ok(z.encode(env))
             })();
             match result {
                 Err(_err) => env.error_tuple("test failed".encode(env)),
