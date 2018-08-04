@@ -156,6 +156,10 @@ impl Matrix {
         }
     }
 
+    pub fn size(&self) -> (usize, usize) {
+        (self.row_size(), self.col_size())
+    }
+
     pub fn i(&self, row: usize, col: usize) -> usize {
         match self.transpose {
             false => (row << self.col_shift) + col,
@@ -212,9 +216,11 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 let iteration: i64 = tuple.4;
                 let m = y.length();
                 let tx = x.transpose();
+                let size = theta.size();
                 //Ok(tuple.0)
                 //Ok(m.encode(env))
-                Ok(tx.to_vec().encode(env))
+                // Ok(tx.to_vec().encode(env))
+                Ok(size.encode(env))
             })();
             match result {
                 Err(_err) => env.error_tuple("test failed".encode(env)),
