@@ -38,13 +38,13 @@ fn add<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 }
 
 pub struct Matrix {
-    pub container: Vec<f64>,
-    pub row_size: usize,
-    pub col_size: usize,
-    pub col_near_pow_2: usize,
-    pub col_shift: usize,
-    pub size: usize,
-    pub transpose: bool,
+    container: Vec<f64>,
+    row_size: usize,
+    col_size: usize,
+    col_near_pow_2: usize,
+    col_shift: usize,
+    size: usize,
+    transpose: bool,
 }
 
 
@@ -107,71 +107,86 @@ impl Matrix {
                 None => {},
             }
         });
-        Matrix{container: container,
-                row_size: row_size,
-                col_size: col_size,
-                col_near_pow_2: col_near_pow_2,
-                col_shift: col_shift,
-                size: size,
-                transpose: false,}
+        Matrix{
+            container: container,
+            row_size: row_size,
+            col_size: col_size,
+            col_near_pow_2: col_near_pow_2,
+            col_shift: col_shift,
+            size: size,
+            transpose: false,
+        }
+    }
+
+    pub fn container(&self) -> Vec<f64> {
+        self.container.clone()
+    }
+
+
+    pub fn transpose(&self) -> Matrix {
+        Matrix{
+            container: self.container(),
+            row_size: self.row_size,
+            col_size: self.col_size,
+            col_near_pow_2: self.col_near_pow_2,
+            col_shift: self.col_shift,
+            size: self.size,
+            transpose: !self.transpose,
+        }
+    }
+
+    pub fn col_size(&self) -> usize {
+        match self.transpose {
+            false => self.col_size,
+            true => self.row_size
+        }
+    }
+
+    pub fn row_size(&self) -> usize {
+        match self.transpose {
+            false => self.row_size,
+            true => self.col_size
+        }
+    }
+
+    pub fn length(&self) -> usize {
+        match self.transpose {
+            false => self.row_size,
+            true => self.col_size
+        }
     }
 
     pub fn i(&self, row: usize, col: usize) -> usize {
-        (row << self.col_shift) + col
-    }
-
-    pub fn t(&self, row: usize, col: usize) -> usize {
-        self.i(col, row)
+        match self.transpose {
+            false => (row << self.col_shift) + col,
+            true  => (col << self.col_shift) + row
+        }
     }
 
     pub fn row_vec(&self, row: usize) -> Vec<f64> {
-        let mut ret: Vec<f64> = Vec::with_capacity(self.col_size);
-        (0..(self.col_size)).for_each(|c| {
+        let mut ret: Vec<f64> = Vec::with_capacity(self.col_size());
+        (0..(self.col_size())).for_each(|c| {
             ret.push(self.container[self.i(row, c)]);
         });
         ret
     }
 
     pub fn col_vec(&self, col: usize) -> Vec<f64> {
-        let mut ret: Vec<f64> = Vec::with_capacity(self.row_size);
-        (0..(self.row_size)).for_each(|r| {
+        let mut ret: Vec<f64> = Vec::with_capacity(self.row_size());
+        (0..(self.row_size())).for_each(|r| {
             ret[r] = self.container[self.i(r, col)];
         });
         ret
     }
 
     pub fn to_vec(&self) -> Vec<Vec<f64>> {
-        let mut ret: Vec<Vec<f64>> = Vec::with_capacity(self.row_size);
-        (0..(self.row_size)).for_each(|r| {
+        let mut ret: Vec<Vec<f64>> = Vec::with_capacity(self.row_size());
+        (0..(self.row_size())).for_each(|r| {
             ret.push(self.row_vec(r))
         });
         ret
     }
-
-	pub fn length(&self) -> usize {
-		self.row_size
-	}
 }
-
-fn sub(x: &Matrix, y: &Matrix) -> Matrix {
-	let row_size = x.row_size;
-	let col_size = x.col_size;
-	let col_near_pow_2 = x.col_near_pow_2;
-    let col_shift = x.col_shift;
-    let size = x.size;
-    let mut container: Vec<f64> = Vec::with_capacity(size);
-    (0..size).for_each(|i| {
-    	container.push(x.container[i] - y.container[i]);
-    });
-    Matrix{container: container,
-        row_size: row_size,
-        col_size: col_size,
-        col_near_pow_2: col_near_pow_2,
-        col_shift: col_shift,
-        size: size,
-        transpose: false,}
-}
-
 
 fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let pid = env.pid();
@@ -195,9 +210,11 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 let theta = Matrix::new(tuple.2.decode::<Vec<Vec<f64>>>()?);
                 let alpha: f64 = tuple.3;
                 let iteration: i64 = tuple.4;
-                let z = y.length();
+                let m = y.length();
+                let tx = x.transpose();
                 //Ok(tuple.0)
-                Ok(z.encode(env))
+                //Ok(m.encode(env))
+                Ok(tx.to_vec().encode(env))
             })();
             match result {
                 Err(_err) => env.error_tuple("test failed".encode(env)),
