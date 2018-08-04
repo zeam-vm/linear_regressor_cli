@@ -58,6 +58,23 @@ defmodule LinearRegressorNif do
         end )
     end
 
+    def fit0( x, y, theta, alpha, iterations ) do
+        m = length( y )
+        tx = Matrix.transpose( x )
+        size = Matrix.size( theta )
+        a = Matrix.new( elem( size, 0 ), elem( size, 1 ), alpha * ( 1 / m ) )
+
+        0..0
+        |> Enum.to_list
+        |> Enum.reduce( theta, fn( _iteration, theta ) ->
+            trans_theta = Matrix.transpose( theta )
+            d = Enum.map(x, fn(row)->
+            		Enum.map(trans_theta, &dot_product(row, &1))
+            	end)
+        end )
+    end
+
+
     @doc """
 
     ## Examples
@@ -65,6 +82,8 @@ defmodule LinearRegressorNif do
     iex> LinearRegressorNif.fit_nif([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [[4.0], [5.0], [6.0]], [[0.0], [0.0], [0.0]], 0.0000003, 10000); receive do l -> l end
     [[1.0e-7], [1.0e-7], [1.0e-7]]
 
+    iex> LinearRegressorNif.fit0([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [[4.0], [5.0], [6.0]], [[0.0], [0.0], [0.0]], 0.0000003, 0)
+    [[0.0], [0.0], [0.0]]
 
     """
     def fit_nif( _x, _y, _theta, _alpha, _iteration ), do: exit(:nif_not_loaded)

@@ -242,17 +242,18 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 let tuple = saved_list.load(env).decode::<(Term, Term, Term, f64, i64)>()?;
                 let x = Matrix::new_from_vec(tuple.0.decode::<Vec<Vec<f64>>>()?);
                 let y = Matrix::new_from_vec(tuple.1.decode::<Vec<Vec<f64>>>()?);
-                let theta = Matrix::new_from_vec(tuple.2.decode::<Vec<Vec<f64>>>()?);
+                let mut theta = Matrix::new_from_vec(tuple.2.decode::<Vec<Vec<f64>>>()?);
                 let alpha: f64 = tuple.3;
                 let iteration: i64 = tuple.4;
                 let m = y.length();
                 let tx = x.transpose();
                 let size = theta.size();
         				let a = Matrix::new( theta.row_size(), theta.col_size(), alpha * ( 1.0 / m as f64) );
-                //Ok(tuple.0)
-                //Ok(m.encode(env))
-                // Ok(tx.to_vec().encode(env))
-                // Ok(size.encode(env))
+								(0..=iteration).for_each(|_i| {
+									let trans_theta = theta.transpose();
+
+								});
+
                 Ok(a.to_vec().encode(env))
             })();
             match result {
