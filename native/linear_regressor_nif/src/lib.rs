@@ -39,11 +39,12 @@ fn add<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
 pub struct Matrix {
     pub container: Vec<f64>,
-    pub row_max: usize,
-    pub col_max: usize,
+    pub row_size: usize,
     pub col_size: usize,
+    pub col_near_pow_2: usize,
     pub col_shift: usize,
     pub size: usize,
+    pub transpose: bool,
 }
 
 
@@ -76,19 +77,19 @@ fn near_pow_2(num: usize) -> (usize, usize) {
 impl Matrix {
 
     pub fn new(vec: Vec<Vec<f64>>) -> Matrix {
-        let row_max: usize = vec.len();
-        let col_max = vec[0].len();
-        let col = near_pow_2(col_max + 1);
-        let col_size = col.0.clone();
+        let row_size: usize = vec.len();
+        let col_size = vec[0].len();
+        let col = near_pow_2(col_size + 1);
+        let col_near_pow_2 = col.0.clone();
         let col_shift = col.1.clone();
-        let mut size = row_max;
+        let mut size = row_size;
         let mut c = col_shift;
         while c > 0 {
             size <<= 1;
             c -= 1;
         }
         let mut container: Vec<f64> = Vec::with_capacity(size);
-        (0..row_max).for_each(|r| {
+        (0..row_size).for_each(|r| {
             match vec.get(r) {
                 Some(vec_r) => {
                     (0..vec_r.len()).for_each(|c| {
@@ -99,7 +100,7 @@ impl Matrix {
                             None => {},
                         }
                     });
-                    (vec_r.len()..col_size).for_each(|_c| {
+                    (vec_r.len()..col_near_pow_2).for_each(|_c| {
                         container.push(0.0)
                     });
                 },
@@ -107,11 +108,12 @@ impl Matrix {
             }
         });
         Matrix{container: container,
-                row_max: row_max,
-                col_max: col_max,
+                row_size: row_size,
                 col_size: col_size,
+                col_near_pow_2: col_near_pow_2,
                 col_shift: col_shift,
-                size: size,}
+                size: size,
+                transpose: false,}
     }
 
     pub fn i(&self, row: usize, col: usize) -> usize {
@@ -123,38 +125,38 @@ impl Matrix {
     }
 
     pub fn row_vec(&self, row: usize) -> Vec<f64> {
-        let mut ret: Vec<f64> = Vec::with_capacity(self.col_max);
-        (0..(self.col_max)).for_each(|c| {
+        let mut ret: Vec<f64> = Vec::with_capacity(self.col_size);
+        (0..(self.col_size)).for_each(|c| {
             ret.push(self.container[self.i(row, c)]);
         });
         ret
     }
 
     pub fn col_vec(&self, col: usize) -> Vec<f64> {
-        let mut ret: Vec<f64> = Vec::with_capacity(self.row_max);
-        (0..(self.row_max)).for_each(|r| {
+        let mut ret: Vec<f64> = Vec::with_capacity(self.row_size);
+        (0..(self.row_size)).for_each(|r| {
             ret[r] = self.container[self.i(r, col)];
         });
         ret
     }
 
     pub fn to_vec(&self) -> Vec<Vec<f64>> {
-        let mut ret: Vec<Vec<f64>> = Vec::with_capacity(self.row_max);
-        (0..(self.row_max)).for_each(|r| {
+        let mut ret: Vec<Vec<f64>> = Vec::with_capacity(self.row_size);
+        (0..(self.row_size)).for_each(|r| {
             ret.push(self.row_vec(r))
         });
         ret
     }
 
 	pub fn length(&self) -> usize {
-		self.row_max
+		self.row_size
 	}
 }
 
 fn sub(x: &Matrix, y: &Matrix) -> Matrix {
-	let row_max = x.row_max;
-	let col_max = x.col_max;
+	let row_size = x.row_size;
 	let col_size = x.col_size;
+	let col_near_pow_2 = x.col_near_pow_2;
     let col_shift = x.col_shift;
     let size = x.size;
     let mut container: Vec<f64> = Vec::with_capacity(size);
@@ -162,11 +164,12 @@ fn sub(x: &Matrix, y: &Matrix) -> Matrix {
     	container.push(x.container[i] - y.container[i]);
     });
     Matrix{container: container,
-        row_max: row_max,
-        col_max: col_max,
+        row_size: row_size,
         col_size: col_size,
+        col_near_pow_2: col_near_pow_2,
         col_shift: col_shift,
-        size: size,}
+        size: size,
+        transpose: false,}
 }
 
 
