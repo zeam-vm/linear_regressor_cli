@@ -63,7 +63,8 @@ defmodule LinearRegressorNif do
     ## Examples
 
     iex> LinearRegressorNif.fit_nif([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [[4.0], [5.0], [6.0]], [[0.0], [0.0], [0.0]], 0.0000003, 10000); receive do l -> l end
-    {3, 1}
+    [[1.0e-7], [1.0e-7], [1.0e-7]]
+
 
     """
     def fit_nif( _x, _y, _theta, _alpha, _iteration ), do: exit(:nif_not_loaded)

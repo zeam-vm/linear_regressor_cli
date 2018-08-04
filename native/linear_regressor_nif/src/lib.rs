@@ -76,7 +76,38 @@ fn near_pow_2(num: usize) -> (usize, usize) {
 
 impl Matrix {
 
-    pub fn new(vec: Vec<Vec<f64>>) -> Matrix {
+		pub fn new(row_size: usize, col_size: usize, initial: f64) -> Matrix {
+			let col = near_pow_2(col_size + 1 + 1);
+			let col_near_pow_2 = col.0.clone();
+			let col_shift = col.1.clone();
+			let mut size = row_size + 1;
+			let mut c = col_shift;
+			while c > 0 {
+				size <<= 1;
+				c -= 1;
+			}
+			let mut container: Vec<f64> = Vec::with_capacity(size);
+			(0..row_size).for_each(|r| {
+				print!("r: {}", r);
+				(0..col_size).for_each(|c| {
+					container.push(initial)
+				});
+				(col_size..col_near_pow_2).for_each(|_c| {
+					container.push(0.0)
+				});
+			});
+      Matrix{
+        container: container,
+        row_size: row_size,
+        col_size: col_size,
+        col_near_pow_2: col_near_pow_2,
+        col_shift: col_shift,
+        size: size,
+        transpose: false,
+      }
+		}
+
+    pub fn new_from_vec(vec: Vec<Vec<f64>>) -> Matrix {
         let row_size: usize = vec.len();
         let col_size = vec[0].len();
         let col = near_pow_2(col_size + 1);
@@ -209,18 +240,20 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
         my_env.send_and_clear(&pid, |env| {
             let result: NifResult<Term> = (|| {
                 let tuple = saved_list.load(env).decode::<(Term, Term, Term, f64, i64)>()?;
-                let x = Matrix::new(tuple.0.decode::<Vec<Vec<f64>>>()?);
-                let y = Matrix::new(tuple.1.decode::<Vec<Vec<f64>>>()?);
-                let theta = Matrix::new(tuple.2.decode::<Vec<Vec<f64>>>()?);
+                let x = Matrix::new_from_vec(tuple.0.decode::<Vec<Vec<f64>>>()?);
+                let y = Matrix::new_from_vec(tuple.1.decode::<Vec<Vec<f64>>>()?);
+                let theta = Matrix::new_from_vec(tuple.2.decode::<Vec<Vec<f64>>>()?);
                 let alpha: f64 = tuple.3;
                 let iteration: i64 = tuple.4;
                 let m = y.length();
                 let tx = x.transpose();
                 let size = theta.size();
+        				let a = Matrix::new( theta.row_size(), theta.col_size(), alpha * ( 1.0 / m as f64) );
                 //Ok(tuple.0)
                 //Ok(m.encode(env))
                 // Ok(tx.to_vec().encode(env))
-                Ok(size.encode(env))
+                // Ok(size.encode(env))
+                Ok(a.to_vec().encode(env))
             })();
             match result {
                 Err(_err) => env.error_tuple("test failed".encode(env)),
