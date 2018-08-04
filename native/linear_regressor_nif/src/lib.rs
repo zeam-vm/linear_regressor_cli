@@ -3,10 +3,13 @@
 #[macro_use] extern crate lazy_static;
 
 extern crate scoped_pool;
+extern crate ocl;
 
 use rustler::{Env, Term, NifResult, Encoder};
 use rustler::env::{OwnedEnv, SavedTerm};
 use rustler::types::tuple::make_tuple;
+
+use ocl::{ProQue, Buffer, MemFlags};
 
 mod atoms {
     rustler_atoms! {
@@ -253,6 +256,32 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 									let trans_theta = theta.transpose();
 
 								});
+
+                let src = r#"
+                __kernel void mult(
+                    __global const double* A,
+                    __global const double* B,
+                    __global double* Result,
+                    const int wA, const int sA,
+                    const int wB, const int sB) {
+                    const int x = get_global_id(0);
+                    const int y = get_global_id(1);
+                    float value = 0;
+                    for (int i = 0; i < wA; ++i) {
+                        int index_a = y << sA + i;
+                        int index_b = i << sB + x;
+                        float elementA = A[index_a];
+                        float elementB = B[index_b];
+                        value = value + elementA * elementB;
+                    }
+                    Result[wB * y + x] = value;
+                }
+                "#;
+
+
+                let pro_que = ProQue::builder()
+                    .src(src)
+                    .dims(x.container().capacity()) // TODO: set dims                    .build().expect("Build ProQue");
 
                 Ok(a.to_vec().encode(env))
             })();
