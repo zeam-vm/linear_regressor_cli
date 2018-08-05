@@ -282,6 +282,7 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 let pro_que = ProQue::builder()
                     .src(src)
                     .dims(x.container().capacity()) // TODO: set dims                    .build().expect("Build ProQue");
+        						.build().expect("Build ProQue");
 
                 Ok(a.to_vec().encode(env))
             })();
