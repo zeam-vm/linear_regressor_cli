@@ -1,0 +1,6 @@
+[package]
+name = "pi"
+version = "0.1.0"
+authors = ["yukq16 <shikine.yui@gmail.com>"]
+
+[dependencies]
