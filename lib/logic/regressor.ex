@@ -11,4 +11,9 @@ defmodule NifRegressor do
 		tuple = {:im_an_atom, 1.0, 1, "string"}
 		print_tuple(tuple)
 	end
+
+	# For List Function
+	def sum_list(_a), do: exit(:nif_not_loaded)
+	
+
 end

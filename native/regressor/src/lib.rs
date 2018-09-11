@@ -19,8 +19,10 @@ mod atoms {
 rustler_export_nifs! {
     "Elixir.NifRegressor",
     [
+        //("Elixir's func, number of arguments, Rust's func)
         ("add", 2, add),
-        ("print_tuple", 1, print_tuple)
+        ("print_tuple", 1, print_tuple),
+        ("sum_list", 1, sum_list)
     ],
     None
 }
@@ -41,3 +43,21 @@ fn print_tuple<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     Ok((atoms::ok(),tuple.3).encode(env)) // {:ok, タプルの４つ目 }を返す
 }
 
+fn sum_list<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    // Gets List
+    let iter: ListIterator = try!(args[0].decode());
+
+    let res: Result<Vec<i64>, Error> = iter
+        .map(|x| x.decode::<i64>())
+        .collect();
+
+    match res {
+        Ok(result) => Ok(result.iter().fold(0, |acc, &x| acc + x).encode(env)),
+        Err(err) => Err(err),
+    }
+}
+
+fn new_list<'a>(env: Env<'a>, _args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let list = vec![1, 2, 3];
+    Ok(list.encode(env))
+}
