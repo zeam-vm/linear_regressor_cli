@@ -14,6 +14,15 @@ defmodule NifRegressor do
 
 	# For List Function
 	def sum_list(_a), do: exit(:nif_not_loaded)
+	def dot_product(_a, _b), do: exit(:nif_not_loaded)
 	
+	# Debug
+	def test1() do
+		dot_product([1, 2, 3], [4, 5, 6])
+	end
+
+	def test2() do
+		dot_product([[1, 2], [3, 4]], [[5, 6], [5, 6]])
+	end
 
 end

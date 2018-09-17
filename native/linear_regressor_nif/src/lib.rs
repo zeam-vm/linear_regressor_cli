@@ -23,8 +23,8 @@ mod atoms {
 rustler_export_nifs! {
     "Elixir.LinearRegressorNif",
     [
-        ("add", 2, add),
-        ("fit_nif", 5, fit_nif),
+    ("add", 2, add),
+    ("fit_nif", 5, fit_nif),
     ],
     None
 }
@@ -79,27 +79,27 @@ fn near_pow_2(num: usize) -> (usize, usize) {
 
 impl Matrix {
 
-		pub fn new(row_size: usize, col_size: usize, initial: f64) -> Matrix {
-			let col = near_pow_2(col_size + 1 + 1);
-			let col_near_pow_2 = col.0.clone();
-			let col_shift = col.1.clone();
-			let mut size = row_size + 1;
-			let mut c = col_shift;
-			while c > 0 {
-				size <<= 1;
-				c -= 1;
-			}
-			let mut container: Vec<f64> = Vec::with_capacity(size);
-			(0..row_size).for_each(|r| {
-				print!("r: {}", r);
-				(0..col_size).for_each(|c| {
-					container.push(initial)
-				});
-				(col_size..col_near_pow_2).for_each(|_c| {
-					container.push(0.0)
-				});
-			});
-      Matrix{
+  pub fn new(row_size: usize, col_size: usize, initial: f64) -> Matrix {
+     let col = near_pow_2(col_size + 1 + 1);
+     let col_near_pow_2 = col.0.clone();
+     let col_shift = col.1.clone();
+     let mut size = row_size + 1;
+     let mut c = col_shift;
+     while c > 0 {
+        size <<= 1;
+        c -= 1;
+    }
+    let mut container: Vec<f64> = Vec::with_capacity(size);
+    (0..row_size).for_each(|r| {
+        print!("r: {}", r);
+        (0..col_size).for_each(|c| {
+           container.push(initial)
+       });
+        (col_size..col_near_pow_2).for_each(|_c| {
+           container.push(0.0)
+       });
+    });
+    Matrix{
         container: container,
         row_size: row_size,
         col_size: col_size,
@@ -107,123 +107,123 @@ impl Matrix {
         col_shift: col_shift,
         size: size,
         transpose: false,
-      }
-		}
+    }
+}
 
-    pub fn new_from_vec(vec: Vec<Vec<f64>>) -> Matrix {
-        let row_size: usize = vec.len();
-        let col_size = vec[0].len();
-        let col = near_pow_2(col_size + 1);
-        let col_near_pow_2 = col.0.clone();
-        let col_shift = col.1.clone();
-        let mut size = row_size;
-        let mut c = col_shift;
-        while c > 0 {
-            size <<= 1;
-            c -= 1;
+pub fn new_from_vec(vec: Vec<Vec<f64>>) -> Matrix {
+    let row_size: usize = vec.len();
+    let col_size = vec[0].len();
+    let col = near_pow_2(col_size + 1);
+    let col_near_pow_2 = col.0.clone();
+    let col_shift = col.1.clone();
+    let mut size = row_size;
+    let mut c = col_shift;
+    while c > 0 {
+        size <<= 1;
+        c -= 1;
+    }
+    let mut container: Vec<f64> = Vec::with_capacity(size);
+    (0..row_size).for_each(|r| {
+        match vec.get(r) {
+            Some(vec_r) => {
+                (0..vec_r.len()).for_each(|c| {
+                    match vec_r.get(c) {
+                        Some(vec_c) => {
+                            container.push(*vec_c)
+                        },
+                        None => {},
+                    }
+                });
+                (vec_r.len()..col_near_pow_2).for_each(|_c| {
+                    container.push(0.0)
+                });
+            },
+            None => {},
         }
-        let mut container: Vec<f64> = Vec::with_capacity(size);
-        (0..row_size).for_each(|r| {
-            match vec.get(r) {
-                Some(vec_r) => {
-                    (0..vec_r.len()).for_each(|c| {
-                        match vec_r.get(c) {
-                            Some(vec_c) => {
-                                container.push(*vec_c)
-                            },
-                            None => {},
-                        }
-                    });
-                    (vec_r.len()..col_near_pow_2).for_each(|_c| {
-                        container.push(0.0)
-                    });
-                },
-                None => {},
-            }
-        });
-        Matrix{
-            container: container,
-            row_size: row_size,
-            col_size: col_size,
-            col_near_pow_2: col_near_pow_2,
-            col_shift: col_shift,
-            size: size,
-            transpose: false,
-        }
+    });
+    Matrix{
+        container: container,
+        row_size: row_size,
+        col_size: col_size,
+        col_near_pow_2: col_near_pow_2,
+        col_shift: col_shift,
+        size: size,
+        transpose: false,
     }
+}
 
-    pub fn container(&self) -> Vec<f64> {
-        self.container.clone()
-    }
+pub fn container(&self) -> Vec<f64> {
+    self.container.clone()
+}
 
 
-    pub fn transpose(&self) -> Matrix {
-        Matrix{
-            container: self.container(),
-            row_size: self.row_size,
-            col_size: self.col_size,
-            col_near_pow_2: self.col_near_pow_2,
-            col_shift: self.col_shift,
-            size: self.size,
-            transpose: !self.transpose,
-        }
+pub fn transpose(&self) -> Matrix {
+    Matrix{
+        container: self.container(),
+        row_size: self.row_size,
+        col_size: self.col_size,
+        col_near_pow_2: self.col_near_pow_2,
+        col_shift: self.col_shift,
+        size: self.size,
+        transpose: !self.transpose,
     }
+}
 
-    pub fn col_size(&self) -> usize {
-        match self.transpose {
-            false => self.col_size,
-            true => self.row_size
-        }
+pub fn col_size(&self) -> usize {
+    match self.transpose {
+        false => self.col_size,
+        true => self.row_size
     }
+}
 
-    pub fn row_size(&self) -> usize {
-        match self.transpose {
-            false => self.row_size,
-            true => self.col_size
-        }
+pub fn row_size(&self) -> usize {
+    match self.transpose {
+        false => self.row_size,
+        true => self.col_size
     }
+}
 
-    pub fn length(&self) -> usize {
-        match self.transpose {
-            false => self.row_size,
-            true => self.col_size
-        }
+pub fn length(&self) -> usize {
+    match self.transpose {
+        false => self.row_size,
+        true => self.col_size
     }
+}
 
-    pub fn size(&self) -> (usize, usize) {
-        (self.row_size(), self.col_size())
-    }
+pub fn size(&self) -> (usize, usize) {
+    (self.row_size(), self.col_size())
+}
 
-    pub fn i(&self, row: usize, col: usize) -> usize {
-        match self.transpose {
-            false => (row << self.col_shift) + col,
-            true  => (col << self.col_shift) + row
-        }
+pub fn i(&self, row: usize, col: usize) -> usize {
+    match self.transpose {
+        false => (row << self.col_shift) + col,
+        true  => (col << self.col_shift) + row
     }
+}
 
-    pub fn row_vec(&self, row: usize) -> Vec<f64> {
-        let mut ret: Vec<f64> = Vec::with_capacity(self.col_size());
-        (0..(self.col_size())).for_each(|c| {
-            ret.push(self.container[self.i(row, c)]);
-        });
-        ret
-    }
+pub fn row_vec(&self, row: usize) -> Vec<f64> {
+    let mut ret: Vec<f64> = Vec::with_capacity(self.col_size());
+    (0..(self.col_size())).for_each(|c| {
+        ret.push(self.container[self.i(row, c)]);
+    });
+    ret
+}
 
-    pub fn col_vec(&self, col: usize) -> Vec<f64> {
-        let mut ret: Vec<f64> = Vec::with_capacity(self.row_size());
-        (0..(self.row_size())).for_each(|r| {
-            ret[r] = self.container[self.i(r, col)];
-        });
-        ret
-    }
+pub fn col_vec(&self, col: usize) -> Vec<f64> {
+    let mut ret: Vec<f64> = Vec::with_capacity(self.row_size());
+    (0..(self.row_size())).for_each(|r| {
+        ret[r] = self.container[self.i(r, col)];
+    });
+    ret
+}
 
-    pub fn to_vec(&self) -> Vec<Vec<f64>> {
-        let mut ret: Vec<Vec<f64>> = Vec::with_capacity(self.row_size());
-        (0..(self.row_size())).for_each(|r| {
-            ret.push(self.row_vec(r))
-        });
-        ret
-    }
+pub fn to_vec(&self) -> Vec<Vec<f64>> {
+    let mut ret: Vec<Vec<f64>> = Vec::with_capacity(self.row_size());
+    (0..(self.row_size())).for_each(|r| {
+        ret.push(self.row_vec(r))
+    });
+    ret
+}
 }
 
 fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
@@ -251,19 +251,19 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 let m = y.length();
                 let tx = x.transpose();
                 let size = theta.size();
-        				let a = Matrix::new( theta.row_size(), theta.col_size(), alpha * ( 1.0 / m as f64) );
-								(0..=iteration).for_each(|_i| {
-									let trans_theta = theta.transpose();
+                let a = Matrix::new( theta.row_size(), theta.col_size(), alpha * ( 1.0 / m as f64) );
+                (0..=iteration).for_each(|_i| {
+                   let trans_theta = theta.transpose();
 
-								});
+               });
 
                 let src = r#"
                 __kernel void mult(
-                    __global const double* A,
-                    __global const double* B,
-                    __global double* Result,
-                    const int wA, const int sA,
-                    const int wB, const int sB) {
+                __global const double* A,
+                __global const double* B,
+                __global double* Result,
+                const int wA, const int sA,
+                const int wB, const int sB) {
                     const int x = get_global_id(0);
                     const int y = get_global_id(1);
                     float value = 0;
@@ -280,17 +280,17 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 
 
                 let pro_que = ProQue::builder()
-                    .src(src)
+                .src(src)
                     .dims(x.container().capacity()) // TODO: set dims                    .build().expect("Build ProQue");
-        						.build().expect("Build ProQue");
+                    .build().expect("Build ProQue");
 
-                Ok(a.to_vec().encode(env))
-            })();
-            match result {
-                Err(_err) => env.error_tuple("test failed".encode(env)),
-                Ok(term) => term
-            }
-        });
+                    Ok(a.to_vec().encode(env))
+                })();
+                match result {
+                    Err(_err) => env.error_tuple("test failed".encode(env)),
+                    Ok(term) => term
+                }
+            });
     });
 
     Ok(atoms::ok().encode(env))
