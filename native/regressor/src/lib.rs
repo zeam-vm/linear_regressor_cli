@@ -31,21 +31,11 @@ rustler_export_nifs! {
     "Elixir.NifRegressor",
     [
         //("Elixir's func, number of arguments, Rust's func)
-        ("add", 2, add),
-        // ("print_tuple", 1, print_tuple),
-        // ("sum_list", 1, sum_list),
         ("nif_dot_product", 2, dot_product),
         ("nif_zeros", 1, zeros),
         ("nif_new", 2, new),
     ],
     None
-}
-
-fn add<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let num1: i64 = try!(args[0].decode());
-    let num2: i64 = try!(args[1].decode());
-
-    Ok((atoms::ok(), num1 + num2).encode(env))
 }
 
 fn new<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
@@ -129,49 +119,6 @@ fn dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 //     // }
 
 
-// }
-
-// fn async_dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
-//     let pid = env.pid();
-//     let mut my_env = OwnedEnv::new();
-
-//     let saved_list = my_env.run(|env| -> NifResult<SaveTerm> {
-//         // Initialize Arguments
-//         let x_arg: Term = args[0].in_env(env);
-//         let y_arg: Term = args[1].in_env(env);
-
-//         Ok(my_env.save(make_tuple(env), &[x_arg, y_arg])))    
-//     })?;
-
-//     std::thread::spawn(move ||  {
-//         my_env.send_and_clear(&pid, |env| {
-//             let result: NifResult<Term> = (|| {
-//                 let tuple = saved_list.load(env).decode::<(Term, Term)>()?; 
-//                 let mut x: Vec<i64> = try!(tuple.0.decode::<Vec<i64>>());
-//                 let y: Vec<i64> = try!(tuple.1.decode::<Vec<i64>>());
-//                 // Calc Dot Product
-//                 let mut ans: i64 = 0; 
-//                 for (i, j) in x.iter_mut().enumerate(){
-//                     //println!("{}: {}", i, (*j)*y[i]);
-//                     ans = ans + (*j)*y[i];
-//                 }
-
-//                 let res: Result<Vec<i64>, Error> = vec
-//                     .iter()
-//                     .collect();
-
-//                 match res {
-//                     Ok(result) => {
-
-//                     },
-//                     Err(err) => Err(err)
-//                 }
-
-//                 Ok((atoms::ok(), ans).encode(env))
-//             })();
-//         });
-//     });
-//     Ok(atoms::ok().to_term(env))
 // }
 
 fn zeros<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {

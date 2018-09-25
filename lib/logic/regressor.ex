@@ -1,16 +1,6 @@
 defmodule NifRegressor do
 	use Rustler, otp_app: :linear_regressor_cli, crate: :regressor
 
-	def add(_a, _b), do: exit(:nif_not_loaded)
-	# def dot_product(_a, _b), do: exit(:nif_not_loaded)
-
-	defp print_tuple(_a), do: exit(:nif_not_loaded)
-	def test_tuple() do
-		# 4要素タプルの呼び出し
-		tuple = {:im_an_atom, 1.0, 1, "string"}
-		print_tuple(tuple)
-	end
-
 	# For List Function
 	def sum_list(_a), do: exit(:nif_not_loaded)
 	def nif_dot_product(_a, _b), do: exit(:nif_not_loaded)
@@ -37,6 +27,15 @@ defmodule NifRegressor do
 	#	none = original
 	# 	1 = my function for elixir
 	#	2 = my function for rustler 
+
+	# tool
+	def timer( f ) do
+		:timer.tc( fn -> f.() end)
+		|> case do
+			{ elapsed, res } -> IO.inspect( elapsed / 1_000_000 )
+			res
+		end
+	end
 
 	### make list
 	# later
@@ -104,39 +103,7 @@ defmodule NifRegressor do
 		|>Kernel./(1_000_000)
 	end
 
-    @doc """
-
-    ## Examples
-
-    iex> LinearRegressorNif.fit_nif([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [[4.0], [5.0], [6.0]], [[0.0], [0.0], [0.0]], 0.0000003, 10000); receive do l -> l end
-    [[1.0e-7], [1.0e-7], [1.0e-7]]
-
-    iex> LinearRegressorNif.fit0([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [[4.0], [5.0], [6.0]], [[0.0], [0.0], [0.0]], 0.0000003, 0)
-    [[0.0], [0.0], [0.0]]
-
-    """
-   
-
- 	@doc """
- 	subtract_rows.
-
-	## Examples
-
-	iex> LinearRegressorNif.subtract_rows([4, 5, 6], [1, 2, 3])
-	[3, 3, 3]
-
-	iex> LinearRegressorNif.subtract_rows([4.0, 5.0, 6.0], [1.0, 2.0, 3.0])
-	[3.0, 3.0, 3.0]
-
-	"""
-	def subtract_rows(r1, r2) when r1 == []  or  r2 == [], do: []
-	def subtract_rows(r1, r2) do
-		[h1|t1] = r1
-		[h2|t2] = r2
-		[h1-h2] ++ subtract_rows(t1,t2)
-	end
-
- 	@doc """
+	@doc """
  	dot_product.
 
 	## Examples
@@ -148,30 +115,10 @@ defmodule NifRegressor do
 	32.0
 
 	"""
-    def dot_product_ex(r1, _r2) when r1 == [], do: 0
-  	def dot_product_ex(r1, r2) do
-    	[h1|t1] = r1
-    	[h2|t2] = r2
-    	(h1*h2) + dot_product_ex(t1, t2)
-	end
-
-
- 	@doc """
- 	emult_rows.
-
-	## Examples
-
-	iex> LinearRegressorNif.emult_rows([1, 2, 3], [4, 5, 6])
-	[4, 10, 18]
-
-	iex> LinearRegressorNif.emult_rows([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
-	[4.0, 10.0, 18.0]
-
-	"""
-	def emult_rows(r1, r2) when r1 == []  or  r2 == [], do: []
-	def emult_rows(r1, r2) do
+	def dot_product_ex(r1, _r2) when r1 == [], do: 0
+	def dot_product_ex(r1, r2) do
 		[h1|t1] = r1
 		[h2|t2] = r2
-		[h1*h2] ++ emult_rows(t1,t2)
+		(h1*h2) + dot_product_ex(t1, t2)
 	end
 end
