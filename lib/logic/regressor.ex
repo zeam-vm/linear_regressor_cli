@@ -1,17 +1,13 @@
 defmodule NifRegressor do
 	use Rustler, otp_app: :linear_regressor_cli, crate: :regressor
 
+	@index 10_000_000
+
 	# For List Function
 	def sum_list(_a), do: exit(:nif_not_loaded)
 	def nif_dot_product(_a, _b), do: exit(:nif_not_loaded)
 	def nif_zeros(_a), do: exit(:nif_not_loaded)
 	def nif_new(_a, _b), do: exit(:nif_not_loaded)
-
-	# def benchmark do
-	# 	:timer.tc( Matrix.new()
-
-	# 		)
-	# end
 
 	def zeros(n) when n < 1, do: []
 	def zeros(n) do
@@ -24,10 +20,7 @@ defmodule NifRegressor do
 	end
 
 	# Benchmark
-	#	none = original
-	# 	1 = my function for elixir
-	#	2 = my function for rustler 
-
+	
 	# tool
 	def timer( f ) do
 		:timer.tc( fn -> f.() end)
@@ -41,7 +34,7 @@ defmodule NifRegressor do
 	# later
 	def new_list_benchmark do
 		:timer.tc( fn ->
-			1..10_000_000
+			1..@index
 			|> Enum.to_list
 		end)
 		|>elem(0)
@@ -51,7 +44,7 @@ defmodule NifRegressor do
 	# faster
 	def new_list_benchmark1 do
 		:timer.tc( fn ->
-			new(1, 10_000_000) 
+			new(1, @index) 
 		end)
 		|>elem(0)
 		|>Kernel./(1_000_000)
@@ -61,7 +54,7 @@ defmodule NifRegressor do
 	# very fast
 	def zeros_benchmark do
 		:timer.tc( fn ->
-			List.duplicate(0, 10_000_000)
+			List.duplicate(0, @index)
 		end)
 		|>elem(0)
 		|>Kernel./(1_000_000)
@@ -70,7 +63,7 @@ defmodule NifRegressor do
 	# later 
 	def zeros_benchmark1 do
 		:timer.tc( fn ->
-			zeros(10_000_000)
+			zeros(@index)
 		end)
 		|>elem(0)
 		|>Kernel./(1_000_000)
@@ -79,14 +72,14 @@ defmodule NifRegressor do
 	# fast
 	def zeros_benchmark2 do
 		:timer.tc( fn ->
-			nif_zeros(10_000_000)
+			nif_zeros(@index)
 		end)
 		|>elem(0)
 		|>Kernel./(1_000_000)
 	end
 
 	def dp_benchmark do
-		m = new(1, 10_000_000)
+		m = nif_new(1, @index) |>elem(1)
 		:timer.tc( fn ->
 			dot_product_ex(m, m) 
 		end)
@@ -95,7 +88,7 @@ defmodule NifRegressor do
 	end
 
 	def dp_benchmark1 do
-		m = new(1, 10_000_000)
+		m = nif_new(1, @index) |>elem(1)
 		:timer.tc( fn ->
 			nif_dot_product(m, m)
 		end)
@@ -108,10 +101,10 @@ defmodule NifRegressor do
 
 	## Examples
 
-	iex> LinearRegressorNif.dot_product([1, 2, 3], [4, 5, 6])
+	iex> LinearRegressorNif.dot_product_ex([1, 2, 3], [4, 5, 6])
 	32
 
-	iex> LinearRegressorNif.dot_product([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
+	iex> LinearRegressorNif.dot_product_ex([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
 	32.0
 
 	"""

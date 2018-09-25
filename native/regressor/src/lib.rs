@@ -38,15 +38,6 @@ rustler_export_nifs! {
     None
 }
 
-fn new<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let first: i64 = try!(args[0].decode());
-    let end: i64 = try!(args[1].decode());
-    
-    let vec = (first..end).collect::<Vec<_>>();
-
-    Ok((atoms::ok(), vec).encode(env))
-}
-
 // fn to_range(arg: Term) -> Result<RangeInclusive<f64>, Error> {
 //     let vec:Vec<(Term, Term)> = arg.decode::<MapIterator>()?.collect();
 //     match (&*vec[0].0.atom_to_string()?, &*vec[0].1.atom_to_string()?) {
@@ -73,12 +64,12 @@ fn dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
     
     // Initialize Arguments
     // Decode to Vector
-    let x: Vec<f64> = args[0].decode()?;
-    let y: Vec<f64> = args[1].decode()?;
+    let x: Vec<i64> = args[0].decode()?;
+    let y: Vec<i64> = args[1].decode()?;
     
     // Main Process 
     let tuple = x.iter().zip(y.iter());
-    let mut ans = 0.0;
+    let mut ans = 0;
     for (i, j) in tuple{
         ans = ans + (i*j);
     }
@@ -87,6 +78,7 @@ fn dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
     Ok((atoms::ok(), ans).encode(env))
 }
 
+// // using to_list
 // fn dot_product2<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 //     // x : list for 1dim 
 //     // y : list for 1dim 
@@ -120,6 +112,15 @@ fn dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 
 
 // }
+
+fn new<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+    let first: i64 = try!(args[0].decode());
+    let end: i64 = try!(args[1].decode());
+    
+    let vec = (first..end).collect::<Vec<_>>();
+
+    Ok((atoms::ok(), vec).encode(env))
+}
 
 fn zeros<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let len = (args[0]).decode::<(usize)>()?;
