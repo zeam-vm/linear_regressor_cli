@@ -12,8 +12,7 @@ defmodule LinearRegressorNif do
 	"""
 	def add(_a, _b), do: exit(:nif_not_loaded)
 
-
-	def predict( x, theta ), do: Matrix.mult( x, theta )
+    def predict( x, theta ), do: Matrix.mult( x, theta )
 
 	def cost( x, y, theta ) do
 		m = length( y )
