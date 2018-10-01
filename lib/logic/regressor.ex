@@ -4,10 +4,10 @@ defmodule NifRegressor do
 	@index 10_000_000
 
 	# For List Function
-	def sum_list(_a), do: exit(:nif_not_loaded)
-	def nif_dot_product(_a, _b), do: exit(:nif_not_loaded)
+	def dot_product(_a, _b), do: exit(:nif_not_loaded)
 	def nif_zeros(_a), do: exit(:nif_not_loaded)
 	def nif_new(_a, _b), do: exit(:nif_not_loaded)
+	def sub(_a, _b), do: exit(:nif_not_loaded)
 
 	def zeros(n) when n < 1, do: []
 	def zeros(n) do
@@ -90,7 +90,7 @@ defmodule NifRegressor do
 	def dp_benchmark1 do
 		m = nif_new(1, @index) |>elem(1)
 		:timer.tc( fn ->
-			nif_dot_product(m, m)
+			dot_product(m, m)
 		end)
 		|>elem(0)
 		|>Kernel./(1_000_000)

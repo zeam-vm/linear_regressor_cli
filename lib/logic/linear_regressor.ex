@@ -20,7 +20,9 @@ defmodule LinearRegressor do
 		0..iterations |> Enum.to_list |> Enum.reduce( theta, fn( _iteration, theta ) -> 
 			m = length( y )
 			d = Matrix.mult( Matrix.transpose( x ), Matrix.sub( Matrix.mult( x, theta ), y ) )
-			size = Matrix.size( d )
+			size = Matrix.size( d ) # tuple
+			# row...elem(size, 0), col...elem(size, 1)
+			# a is 3row 1col
 			a = Matrix.new( elem( size, 0 ), elem( size, 1 ), alpha * ( 1 / m ) )
 			d = Matrix.emult( d, a )
 			Matrix.sub( theta, d )
