@@ -78,28 +78,27 @@ fn near_pow_2(num: usize) -> (usize, usize) {
 
 
 impl Matrix {
-
-  pub fn new(row_size: usize, col_size: usize, initial: f64) -> Matrix {
-     let col = near_pow_2(col_size + 1 + 1);
-     let col_near_pow_2 = col.0.clone();
-     let col_shift = col.1.clone();
-     let mut size = row_size + 1;
-     let mut c = col_shift;
-     while c > 0 {
+    pub fn new(row_size: usize, col_size: usize, initial: f64) -> Matrix {
+      let col = near_pow_2(col_size + 1 + 1);
+      let col_near_pow_2 = col.0.clone();
+      let col_shift = col.1.clone();
+      let mut size = row_size + 1;
+      let mut c = col_shift;
+      while c > 0 {
         size <<= 1;
-        c -= 1;
-    }
-    let mut container: Vec<f64> = Vec::with_capacity(size);
-    (0..row_size).for_each(|r| {
+          c -= 1;
+      }
+      let mut container: Vec<f64> = Vec::with_capacity(size);
+      (0..row_size).for_each(|r| {
         print!("r: {}", r);
         (0..col_size).for_each(|c| {
-           container.push(initial)
-       });
+          container.push(initial)
+        });
         (col_size..col_near_pow_2).for_each(|_c| {
-           container.push(0.0)
-       });
-    });
-    Matrix{
+          container.push(0.0)
+        });
+      });
+      Matrix{
         container: container,
         row_size: row_size,
         col_size: col_size,
@@ -107,50 +106,50 @@ impl Matrix {
         col_shift: col_shift,
         size: size,
         transpose: false,
+      }
     }
-}
 
-pub fn new_from_vec(vec: Vec<Vec<f64>>) -> Matrix {
-    let row_size: usize = vec.len();
-    let col_size = vec[0].len();
-    let col = near_pow_2(col_size + 1);
-    let col_near_pow_2 = col.0.clone();
-    let col_shift = col.1.clone();
-    let mut size = row_size;
-    let mut c = col_shift;
-    while c > 0 {
-        size <<= 1;
-        c -= 1;
-    }
-    let mut container: Vec<f64> = Vec::with_capacity(size);
-    (0..row_size).for_each(|r| {
-        match vec.get(r) {
-            Some(vec_r) => {
-                (0..vec_r.len()).for_each(|c| {
-                    match vec_r.get(c) {
-                        Some(vec_c) => {
-                            container.push(*vec_c)
-                        },
-                        None => {},
-                    }
-                });
-                (vec_r.len()..col_near_pow_2).for_each(|_c| {
-                    container.push(0.0)
-                });
-            },
-            None => {},
+    pub fn new_from_vec(vec: Vec<Vec<f64>>) -> Matrix {
+        let row_size: usize = vec.len();
+        let col_size = vec[0].len();
+        let col = near_pow_2(col_size + 1);
+        let col_near_pow_2 = col.0.clone();
+        let col_shift = col.1.clone();
+        let mut size = row_size;
+        let mut c = col_shift;
+        while c > 0 {
+            size <<= 1;
+            c -= 1;
         }
-    });
-    Matrix{
-        container: container,
-        row_size: row_size,
-        col_size: col_size,
-        col_near_pow_2: col_near_pow_2,
-        col_shift: col_shift,
-        size: size,
-        transpose: false,
+        let mut container: Vec<f64> = Vec::with_capacity(size);
+        (0..row_size).for_each(|r| {
+            match vec.get(r) {
+                Some(vec_r) => {
+                    (0..vec_r.len()).for_each(|c| {
+                        match vec_r.get(c) {
+                            Some(vec_c) => {
+                                container.push(*vec_c)
+                            },
+                            None => {},
+                        }
+                    });
+                    (vec_r.len()..col_near_pow_2).for_each(|_c| {
+                        container.push(0.0)
+                    });
+                },
+                None => {},
+            }
+        });
+        Matrix{
+            container: container,
+            row_size: row_size,
+            col_size: col_size,
+            col_near_pow_2: col_near_pow_2,
+            col_shift: col_shift,
+            size: size,
+            transpose: false,
+        }
     }
-}
 
 pub fn container(&self) -> Vec<f64> {
     self.container.clone()
@@ -158,15 +157,16 @@ pub fn container(&self) -> Vec<f64> {
 
 
 pub fn transpose(&self) -> Matrix {
-    Matrix{
-        container: self.container(),
-        row_size: self.row_size,
-        col_size: self.col_size,
-        col_near_pow_2: self.col_near_pow_2,
-        col_shift: self.col_shift,
-        size: self.size,
-        transpose: !self.transpose,
-    }
+    // Matrix{
+    //     container: self.container(),
+    //     row_size: self.row_size,
+    //     col_size: self.col_size,
+    //     col_near_pow_2: self.col_near_pow_2,
+    //     col_shift: self.col_shift,
+    //     size: self.size,
+    //     transpose: !self.transpose,
+    // }
+    Matrix{ transpose: !self.transpose, .. self}
 }
 
 pub fn col_size(&self) -> usize {
@@ -253,9 +253,9 @@ fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
                 let size = theta.size();
                 let a = Matrix::new( theta.row_size(), theta.col_size(), alpha * ( 1.0 / m as f64) );
                 (0..=iteration).for_each(|_i| {
-                   let trans_theta = theta.transpose();
+                 let trans_theta = theta.transpose();
 
-               });
+             });
 
                 let src = r#"
                 __kernel void mult(
