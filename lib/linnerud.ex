@@ -33,7 +33,7 @@ defmodule Linnerud do
 		IO.inspect error
 	end
 
-	def run2 do
+	def run1 do
 		features = Dataset.load_datas( "data/linnerud_exercise.csv" )
 		targets  = Dataset.load_datas( "data/linnerud_physiological.csv" )
 
@@ -48,7 +48,7 @@ defmodule Linnerud do
 
 		alpha = 0.0000003
 		iterations = 10000
-		theta = [ [ 0 ], [ 0 ], [ 0 ] ]
+		theta = [ [ 0.0 ], [ 0.0 ], [ 0.0 ] ]
 
 		theta = NifRegressor.fit( x_train, y_train, theta, alpha, iterations )
 
@@ -74,9 +74,9 @@ defmodule Linnerud do
 		)
 	end
 
-	def benchmark2 do
+	def benchmark1 do
 		IO.puts (
-			:timer.tc(fn -> run2() end)
+			:timer.tc(fn -> run1() end)
 			|> elem(0)
 			|> Kernel./(1000000)
 		)
