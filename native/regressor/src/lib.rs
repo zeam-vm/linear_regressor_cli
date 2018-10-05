@@ -77,15 +77,6 @@ impl Matrix{
   }
 }
 
-// pub fn new_matrix(x: Vec<Vec<Num>>, init: Num) -> Matrix{
-//     let row = x.len();
-//     let col = x[0].len();    
-// }
-
-pub fn transpose(x: Vec<Vec<Num>>) -> Matrix {
-
-}
-
 pub fn mult2d(x: Vec<Vec<Num>>, y: Vec<Vec<Num>>) -> Matrix {
   let ans_row = x[0].len();
   let ans_col = y[0].len();
@@ -114,16 +105,6 @@ pub fn mult2d(x: Vec<Vec<Num>>, y: Vec<Vec<Num>>) -> Matrix {
   }
 }
 
-// pub fn transpose (x: Vec<Vec<i64>>) -> Vec<Vec<i64>> {
-//     let x
-
-//     let mut ans = x.clone();
-
-//     let tuple = x.iter()
-//     ans.reverse();
-//     ans
-// }
-
 fn test<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
     let mut x: Vec<Vec<Num>> = args[0].decode()?;
     let y: Vec<Vec<Num>> = args[1].decode()?;
@@ -138,13 +119,7 @@ fn test<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
         }
     }
 
-
-
     let mat: Matrix = mult2d(x, y);
-
-    // for i in mat.data.clone().iter(){  
-    //     println!("{:?}", i);
-    // }
 
     Ok(atoms::ok().encode(env))
 }
@@ -195,7 +170,3 @@ fn zeros<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let zero_vec = vec![0; len];
     Ok(zero_vec.encode(env))
 }
-
-// fn fit<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-//     // let x Vec=  
-// }
