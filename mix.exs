@@ -30,9 +30,9 @@ defmodule LinearRegressorCli.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-		{ :matrix,    "~> 0.3.2" },
-		{ :csv,       "~> 2.0.0" },
-		{ :rustler,   "~> 0.18.0"},
+		  { :matrix,    "~> 0.3.2" },
+		  { :csv,       "~> 2.0.0" },
+		  { :rustler,   "~> 0.18.0"},
     ]
   end
 end

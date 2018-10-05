@@ -2,6 +2,7 @@
   "csv": {:hex, :csv, "2.0.0", "c66fea89ba7862b94901baf0871285e9b73cad89c5fdb57a6386d2adcf29593e", [:mix], [{:parallel_stream, "~> 1.0.4", [hex: :parallel_stream, repo: "hexpm", optional: false]}], "hexpm"},
   "exprintf": {:hex, :exprintf, "0.2.1", "b7e895dfb00520cfb7fc1671303b63b37dc3897c59be7cbf1ae62f766a8a0314", [:mix], [], "hexpm"},
   "matrix": {:hex, :matrix, "0.3.2", "9c826bc3a1117bf5e1c5cdcf3a3d95456c93bc2e127a04e363e9fc90b724f784", [:mix], [{:exprintf, "~> 0.1", [hex: :exprintf, repo: "hexpm", optional: false]}], "hexpm"},
+  "numex": {:hex, :numex, "0.1.0", "161133f079e541aa66327c980c75b681c47a93a6db5c60622324330a1c450eee", [:mix], [], "hexpm"},
   "parallel_stream": {:hex, :parallel_stream, "1.0.6", "b967be2b23f0f6787fab7ed681b4c45a215a81481fb62b01a5b750fa8f30f76c", [:mix], [], "hexpm"},
   "rustler": {:hex, :rustler, "0.18.0", "db4bd0c613d83a1badc31be90ddada6f9821de29e4afd15c53a5da61882e4f2d", [:mix], [], "hexpm"},
 }
