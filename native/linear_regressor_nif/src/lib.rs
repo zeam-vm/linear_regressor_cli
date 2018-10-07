@@ -50,8 +50,6 @@ pub struct Matrix {
     transpose: bool,
 }
 
-
-
 fn near_pow_2(num: usize) -> (usize, usize) {
     if num <= 0 {
         (0, 0)
@@ -76,18 +74,17 @@ fn near_pow_2(num: usize) -> (usize, usize) {
     }
 }
 
-
 impl Matrix {
-    pub fn new(row_size: usize, col_size: usize, initial: f64) -> Matrix {
-      let col = near_pow_2(col_size + 1 + 1);
-      let col_near_pow_2 = col.0.clone();
-      let col_shift = col.1.clone();
-      let mut size = row_size + 1;
-      let mut c = col_shift;
-      while c > 0 {
-        size <<= 1;
-          c -= 1;
-      }
+  pub fn new(row_size: usize, col_size: usize, initial: f64) -> Matrix {
+    let col = near_pow_2(col_size + 1 + 1);
+    let col_near_pow_2 = col.0.clone();
+    let col_shift = col.1.clone();
+    let mut size = row_size + 1;
+    let mut c = col_shift;
+    while c > 0 {
+      size <<= 1;
+      c -= 1;
+    }
       let mut container: Vec<f64> = Vec::with_capacity(size);
       (0..row_size).for_each(|r| {
         print!("r: {}", r);
