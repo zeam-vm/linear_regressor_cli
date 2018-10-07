@@ -49,6 +49,9 @@ defmodule NifRegressor do
       theta |> to_float, 
       alpha |> to_float,
       iterations)
+    receive do
+      l -> l
+    end
   end
 
   # def fit_with_nif( x, y, theta, alpha, iterations ) do

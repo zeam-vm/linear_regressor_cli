@@ -3,12 +3,12 @@
 #[macro_use] extern crate lazy_static;
 
 use rustler::{Env, Term, NifResult, Encoder};
-// use rustler::env::{OwnedEnv, SavedTerm};
+use rustler::env::{OwnedEnv, SavedTerm};
 // use rustler::types::atom::Atom;
 // use rustler::types::list::ListIterator;
 // use rustler::types::map::MapIterator;
 
-// use rustler::types::tuple::make_tuple;
+use rustler::types::tuple::make_tuple;
 // use std::ops::Range;
 // use std::ops::RangeInclusive;
 
@@ -216,17 +216,17 @@ fn test<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 }
 
 fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
-  let x: Vec<Vec<Num>> = args[0].decode()?;
-  let y: Vec<Vec<Num>> = args[1].decode()?;
-  let tx = transpose(x.clone());
-  let theta: Vec<Vec<Num>> = args[2].decode()?;
-  let alpha: Num = try!(args[3].decode());
-  let iterations: i64 = try!(args[4].decode());
+  // let x: Vec<Vec<Num>> = args[0].decode()?;
+  // let y: Vec<Vec<Num>> = args[1].decode()?;
+  // let theta: Vec<Vec<Num>> = args[2].decode()?;
+  // let alpha: Num = try!(args[3].decode());
+  // let iterations: i64 = try!(args[4].decode());
 
-  let m = y.len() as Num;
-  let trans_theta = transpose(theta.clone());
-  let (left, right) = (theta.len(), theta[0].len());
-  let a = new_vec2(left, right, alpha / m);
+  // let tx = transpose(x.clone());
+  // let m = y.len() as Num;
+  // let trans_theta = transpose(theta.clone());
+  // let (left, right) = (theta.len(), theta[0].len());
+  // let a = new_vec2(left, right, alpha / m);
 
   // println!("m:{:?}", m);
   // println!("tx:{:?}", tx.iter());
@@ -236,20 +236,63 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   // println!("theta{:?}", theta.iter());
   // println!("trans_theta:{:?}", trans_theta);
 
-  let ans = (0..iterations)
-  .fold( theta, |theta, _iteration|{
-    let x = x.clone();
-    let y = y.clone();
-    let tx = tx.clone();
-    let a = a.clone();
-    let trans_theta = transpose(theta.clone());
+  let pid = env.pid();
+  let mut my_env = OwnedEnv::new();
 
-    let mut d = mult( tx, sub2d( mult(x, theta.clone()), y ) );
-    d = emult2d(d, a);
-    sub2d(theta, d)
+  let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
+    let x = args[0].in_env(env);
+    let y = args[1].in_env(env);
+    let theta = args[2].in_env(env);
+    let alpha = args[3].in_env(env);
+    let iterations = args[4].in_env(env);
+    Ok(my_env.save(make_tuple(env, &[x, y, theta, alpha, iterations])))
+  })?;
+
+  std::thread::spawn(move ||  {
+    my_env.send_and_clear(&pid, |env| {
+      let result: NifResult<Term> = (|| {
+        let tuple = saved_list
+        .load(env).decode::<(
+          Term, 
+          Term,
+          Term,
+          Num,
+          i64)>()?; 
+        
+        let x: Vec<Vec<Num>> = try!(tuple.0.decode());
+        let y: Vec<Vec<Num>> = try!(tuple.1.decode());
+        let theta: Vec<Vec<Num>> = try!(tuple.2.decode());
+        let alpha: Num = tuple.3;
+        let iterations: i64 = tuple.4;
+
+        let tx = transpose(x.clone());
+        let m = y.len() as Num;
+        let trans_theta = transpose(theta.clone());
+        let (left, right) = (theta.len(), theta[0].len());
+        let a = new_vec2(left, right, alpha / m);
+
+        let ans = (0..iterations)
+          .fold( theta, |theta, _iteration|{
+            let x = x.clone();
+            let y = y.clone();
+            let tx = tx.clone();
+            let a = a.clone();
+            let trans_theta = transpose(theta.clone());
+
+          let mut d = mult( tx, sub2d( mult(x, theta.clone()), y ) );
+          d = emult2d(d, a);
+          sub2d(theta, d)
+        });
+
+        Ok(ans.encode(env))
+      })();
+      match result {
+          Err(_err) => env.error_tuple("test failed".encode(env)),
+          Ok(term) => term
+      }  
+    });
   });
-
-  Ok(ans.encode(env))
+  Ok(atoms::ok().to_term(env))
 }
 
 fn nif_dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
