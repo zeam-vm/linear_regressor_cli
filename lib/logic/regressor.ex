@@ -14,7 +14,7 @@ defmodule NifRegressor do
   def _emult(_a, _b), do: exit(:nif_not_loaded)
 
   # Main Function
-  def fit(_x, _y, _theta, _alpha, _iteration), do: exit(:nif_not_loaded)
+  def _fit(_x, _y, _theta, _alpha, _iteration), do: exit(:nif_not_loaded)
   def _test(_x, _y), do: exit(:nif_not_loaded)
   def test(x, y)
     when is_list(x) and is_list(y) do
@@ -42,6 +42,14 @@ defmodule NifRegressor do
   end
   def to_float(any), do: any
   
+  def fit( x, y, theta, alpha, iterations ) do
+    _fit(
+      x |> to_float, 
+      y |> to_float, 
+      theta |> to_float, 
+      alpha |> to_float,
+      iterations)
+  end
 
   # def fit_with_nif( x, y, theta, alpha, iterations ) do
   #   m = length( y )
