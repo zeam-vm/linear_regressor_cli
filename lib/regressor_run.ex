@@ -44,7 +44,7 @@ defmodule Util do
 	# faster
 	def new_list_benchmark1 do
 		:timer.tc( fn ->
-			NifRegressor.new(1, @index) 
+			NifRegressor._new(1, @index) 
 		end)
 		|>elem(0)
 		|>Kernel./(1_000_000)
@@ -80,14 +80,14 @@ defmodule Util do
 	# fast
 	def zeros_benchmark2 do
 		:timer.tc( fn ->
-			NifRegressor.zeros(@index)
+			NifRegressor._zeros(@index)
 		end)
 		|>elem(0)
 		|>Kernel./(1_000_000)
 	end
 
 	def dp_benchmark do
-		m = NifRegressor.new(1, @index) 
+		m = NifRegressor._new(1, @index) 
 		:timer.tc( fn ->
 			dot_product(m, m) 
 		end)
@@ -96,7 +96,7 @@ defmodule Util do
 	end
 
 	def dp_benchmark1 do
-		m = NifRegressor.new(1, @index)
+		m = NifRegressor._new(1, @index)
 		:timer.tc( fn ->
 			dot_product(m, m)
 		end)
