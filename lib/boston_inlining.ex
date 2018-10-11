@@ -43,36 +43,6 @@ defmodule BostonInlining do
 		# IO.inspect error
 	end
 
-def run1 do
-	features = Dataset.load_datas( "data/boston_house_prices_x.csv" )
-		targets  = Dataset.load_datas( "data/boston_house_prices_y.csv" )
-
-		x_train = 
-		[ 
-			features[ :crim ], 
-			features[ :zn ], 
-			features[ :indus ], 
-			features[ :chas ], 
-			features[ :nox ], 
-			features[ :rm ], 
-			features[ :age ], 
-			features[ :dis ], 
-			features[ :rad ], 
-			features[ :tax ], 
-			features[ :ptratio ], 
-			features[ :b ], 
-			features[ :lstat ], 
-		]
-		|> Matrix.transpose
-		y_train = [ targets[ :medv ] ] |> Matrix.transpose
-
-		alpha = 0.0000003
-		iterations = 10000
-		theta = [ [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ] ]
-
-		theta = NifRegressor.fit( x_train, y_train, theta, alpha, iterations )
-end
-
 	def benchmark do
 		IO.puts (
 			:timer.tc(fn -> run() end)
@@ -81,11 +51,4 @@ end
 		)
 	end
 
-	def benchmark1 do
-		IO.puts (
-			:timer.tc(fn -> run1() end)
-			|> elem(0)
-			|> Kernel./(1000000)
-		)
-	end
 end
