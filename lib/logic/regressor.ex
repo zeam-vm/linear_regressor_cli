@@ -15,14 +15,7 @@ defmodule NifRegressor do
 
   # Main Function
   def _fit(_x, _y, _theta, _alpha, _iteration), do: exit(:nif_not_loaded)
-  def _test(_x, _y), do: exit(:nif_not_loaded)
-  def test(x, y)
-    when is_list(x) and is_list(y) do
-      x
-      |> to_float
-      |> _test( y |> to_float )
-  end
-
+  
   # Wrapper
   def dot_product(a, b)
     when is_list(a) and is_list(b) do

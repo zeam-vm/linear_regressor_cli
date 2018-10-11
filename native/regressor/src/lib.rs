@@ -42,7 +42,6 @@ rustler_export_nifs! {
     ("_sub", 2, nif_sub),
     ("_emult", 2, nif_emult),
     ("_fit", 5, nif_fit), 
-    ("_test", 2, test)
   ],
   None
 }
@@ -167,35 +166,6 @@ fn swap_rows_cols(x: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   }
 }
 
-// pub fn mult2d(x: Vec<Vec<Num>>, y: Vec<Vec<Num>>) -> Matrix {
-//   let ans_row = x[0].len();
-//   let ans_col = y[0].len();
-
-//   let mut ans: Vec<Num> = Vec::with_capacity(ans_row*ans_col);
-//   let mut sum = 0.0;
-
-//   // println!("ans_row:{:?}", ans_row);
-//   // println!("ans_col:{:?}", ans_col);
-
-//   for i in 0..x.len(){
-//     for k in 0..ans_col {
-//       for j in 0..ans_row{    
-//         sum = sum + x[i][j]*y[j][k];
-//       }            
-//       println!("{:?}", sum);
-//       ans.push(sum);
-//       sum = 0.0;
-//     }        
-//   }
-
-//   Matrix{
-//     data: ans,
-//     row_size: ans_row,
-//     col_size: ans_col,
-//     transpose: false,
-//   }
-// }
-
 pub fn mult (x: Vec<Vec<Num>>, y: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   let ty = transpose(y);
 
@@ -208,44 +178,17 @@ pub fn mult (x: Vec<Vec<Num>>, y: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   .collect()
 }
 
-fn test<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
-  let x: Vec<Vec<Num>> = args[0].decode()?;
-  let y: Vec<Vec<Num>> = args[1].decode()?;
-
-  Ok(atoms::ok().encode(env))
-}
-
 fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
-  // let x: Vec<Vec<Num>> = args[0].decode()?;
-  // let y: Vec<Vec<Num>> = args[1].decode()?;
-  // let theta: Vec<Vec<Num>> = args[2].decode()?;
-  // let alpha: Num = try!(args[3].decode());
-  // let iterations: i64 = try!(args[4].decode());
-
-  // let tx = transpose(x.clone());
-  // let m = y.len() as Num;
-  // let trans_theta = transpose(theta.clone());
-  // let (left, right) = (theta.len(), theta[0].len());
-  // let a = new_vec2(left, right, alpha / m);
-
-  // println!("m:{:?}", m);
-  // println!("tx:{:?}", tx.iter());
-  // println!("{:?}, {:?}", left, right);
-  // println!("{:?}", a);
-
-  // println!("theta{:?}", theta.iter());
-  // println!("trans_theta:{:?}", trans_theta);
-
   let pid = env.pid();
   let mut my_env = OwnedEnv::new();
 
   let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
-    let x = args[0].in_env(env);
-    let y = args[1].in_env(env);
+    let _x = args[0].in_env(env);
+    let _y = args[1].in_env(env);
     let theta = args[2].in_env(env);
     let alpha = args[3].in_env(env);
     let iterations = args[4].in_env(env);
-    Ok(my_env.save(make_tuple(env, &[x, y, theta, alpha, iterations])))
+    Ok(my_env.save(make_tuple(env, &[_x, _y, theta, alpha, iterations])))
   })?;
 
   std::thread::spawn(move ||  {
@@ -267,7 +210,6 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 
         let tx = transpose(x.clone());
         let m = y.len() as Num;
-        let trans_theta = transpose(theta.clone());
         let (left, right) = (theta.len(), theta[0].len());
         let a = new_vec2(left, right, alpha / m);
 
@@ -277,12 +219,21 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
             let y = y.clone();
             let tx = tx.clone();
             let a = a.clone();
-            let trans_theta = transpose(theta.clone());
 
-          let mut d = mult( tx, sub2d( mult(x, theta.clone()), y ) );
-          d = emult2d(d, a);
-          sub2d(theta, d)
-        });
+           sub2d(theta.clone(), emult2d(mult( tx, sub2d( mult( x, theta.clone() ), y ) ), a))
+          });
+
+        // let ans = (0..iterations)
+        //   .fold( theta, |theta, _iteration|{
+        //     let x = x.clone();
+        //     let y = y.clone();
+        //     let tx = tx.clone();
+        //     let a = a.clone();
+
+        //   let mut d = mult( tx, sub2d( mult(x, theta.clone()), y ) );
+        //   d = emult2d(d, a);
+        //   sub2d(theta, d)
+        // });
 
         Ok(ans.encode(env))
       })();

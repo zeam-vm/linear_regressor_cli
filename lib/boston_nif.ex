@@ -27,7 +27,7 @@ defmodule BostonNif do
 		iterations = 10000
 		theta = [ [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ], [ 0 ] ]
 
-		theta = NifRegressor.fit( x_train, y_train, theta, alpha, iterations )
+		NifRegressor.fit( x_train, y_train, theta, alpha, iterations )
 
 		# x_test = [ [ 0.00632 ], [ 18.0 ], [ 2.31 ], [ 0.0 ], [ 0.538 ], [ 6.575 ], [ 65.2 ], [ 4.09 ], [ 1.0 ], [ 296.0 ], [ 15.3 ], [ 396.9 ], [ 4.98 ] ] |> Matrix.transpose
 		# y_test = [ [ 24.0 ] ]
