@@ -42,6 +42,7 @@ rustler_export_nifs! {
     ("_sub", 2, nif_sub),
     ("_emult", 2, nif_emult),
     ("_fit", 5, nif_fit), 
+    ("_test", 1, test),
   ],
   None
 }
@@ -137,8 +138,64 @@ fn new_vec2(row: usize, col: usize, init: Num) -> Vec<Vec<Num>> {
 }
 
 pub fn transpose(x: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
-  swap_rows_cols(x)
-} 
+  //swap_rows_cols(x)
+
+  let row :usize = x.len();
+  let col :usize = x[0].len();
+  // let mut e: Vec<Vec<Num>> = vec![vec![0.0; col]; col];
+
+  // for i in 0..col{
+  //   e[i][i] = 1.0;
+  // }
+  
+  (0..col)
+  .map(|c| {
+    (0..row)
+    .map( |r| x[r][c] )
+    .collect()
+  })
+  .collect()
+
+  // (0..row).for_each( |r| {
+  //   (0..col).for_each( |c| {
+  //     ans[c][r] = x[r][c]; // x[col*r + c]
+  //   });
+  // });
+
+  // let mut r: usize = 0;
+  // let mut c: usize = 0;
+  // for i in x.iter(){
+  //   for j in i.iter(){
+  //     ans[c][r] = *j;
+  //     c = c+1;
+  //   }
+  //   c = 0;
+  //   r = r + 1;
+  // }
+
+  // for i in ans.clone(){
+  //   for j in i{
+  //     println!("{:?}", j);
+  //   }
+  // }
+
+  // ans
+}
+
+fn test<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
+  let x: Vec<Vec<Num>> = try!(args[0].decode());
+  // let y: Vec<Vec<Num>> = try!(args[1].decode());
+
+  let ans = transpose(x);
+
+  for i in ans.clone(){
+    for j in i {
+      println!("{:?}", j);
+    }
+  }
+
+  Ok(atoms::ok().to_term(env))
+}
 
 fn swap_rows_cols(x: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   let mut first :Vec<Num> = Vec::new();
