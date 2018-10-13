@@ -12,11 +12,6 @@ use rustler::types::tuple::make_tuple;
 // use std::ops::Range;
 // use std::ops::RangeInclusive;
 
-// use rayon::prelude::*;
-
-// use ndarray::arr2;
-
-// type NifResult<T> = Result<T, Error>;
 type Num = f64;
 
 mod atoms {
@@ -42,16 +37,13 @@ rustler_export_nifs! {
     ("_sub", 2, nif_sub),
     ("_emult", 2, nif_emult),
     ("_fit", 5, nif_fit), 
-    ("_test", 1, test),
   ],
   None
 }
 
 pub fn dot_product(x: Vec<Num>, y: Vec<Num>) -> Num {
-  // Main Process 
-  let tuple = x.iter().zip(y.iter());
-  // let a = tuple.iter();
-  tuple.map(|t| t.0 * t.1).fold(0.0, |sum, i| sum + i)
+  x.iter().zip(y.iter());
+  .map(|t| t.0 * t.1).fold(0.0, |sum, i| sum + i)
 }
 
 pub fn sub(x: Vec<Num>, y: Vec<Num>) -> Vec<Num> {
@@ -78,56 +70,6 @@ pub fn emult2d(x: Vec<Vec<Num>>, y: Vec<Vec<Num>>) -> Vec<Vec<Num>>{
   .collect()
 }
 
-// pub struct Matrix {
-//   data: Vec<Num>, 
-//   row_size: usize,
-//   col_size: usize,
-// }
-
-// impl Matrix{
-//   pub fn new(x: Vec<Vec<Num>>) -> Matrix{
-//     let row = x.len();
-//     let col = x[0].len();
-
-//     let mut out: Vec<Num> = Vec::with_capacity(row*col);
-
-//     // x.iter().map(|r| r.iter().map(|c| out.push(*c)));
-
-//     for i in x{
-//       for j in i{
-//         out.push(j);
-//       }
-//     }
-
-//     Matrix{
-//       data: out,
-//       row_size: row,
-//       col_size: col,
-//       transpose: false,
-//     }
-//   }
-
-//   pub fn with_capacity(x: Vec<Vec<Num>>) -> Matrix{
-//     let row = x.len();
-//     let col = x[0].len();
-
-//     Matrix{
-//       data:Vec::with_capacity(row*col),
-//       row_size: row,
-//       col_size: col,
-//       transpose: false,
-//     }
-//   }
-
-//   pub fn data(&self) -> Vec<Num> {
-//     self.data.clone()
-//   }
-
-//   pub fn split_first(&self) -> (&[Num], &[Num]){
-//     self.data.as_slice().split_at(self.col_size)
-//   }
-// }
-
 fn new_vec2(row: usize, col: usize, init: Num) -> Vec<Vec<Num>> {
   let mut col_vec: Vec<Num> = Vec::with_capacity(col);
   let mut ans: Vec<Vec<Num>> = Vec::with_capacity(row);
@@ -138,16 +80,8 @@ fn new_vec2(row: usize, col: usize, init: Num) -> Vec<Vec<Num>> {
 }
 
 pub fn transpose(x: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
-  //swap_rows_cols(x)
-
   let row :usize = x.len();
   let col :usize = x[0].len();
-  // let mut e: Vec<Vec<Num>> = vec![vec![0.0; col]; col];
-
-  // for i in 0..col{
-  //   e[i][i] = 1.0;
-  // }
-  
   (0..col)
   .map(|c| {
     (0..row)
@@ -155,46 +89,6 @@ pub fn transpose(x: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
     .collect()
   })
   .collect()
-
-  // (0..row).for_each( |r| {
-  //   (0..col).for_each( |c| {
-  //     ans[c][r] = x[r][c]; // x[col*r + c]
-  //   });
-  // });
-
-  // let mut r: usize = 0;
-  // let mut c: usize = 0;
-  // for i in x.iter(){
-  //   for j in i.iter(){
-  //     ans[c][r] = *j;
-  //     c = c+1;
-  //   }
-  //   c = 0;
-  //   r = r + 1;
-  // }
-
-  // for i in ans.clone(){
-  //   for j in i{
-  //     println!("{:?}", j);
-  //   }
-  // }
-
-  // ans
-}
-
-fn test<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
-  let x: Vec<Vec<Num>> = try!(args[0].decode());
-  // let y: Vec<Vec<Num>> = try!(args[1].decode());
-
-  let ans = transpose(x);
-
-  for i in ans.clone(){
-    for j in i {
-      println!("{:?}", j);
-    }
-  }
-
-  Ok(atoms::ok().to_term(env))
 }
 
 fn swap_rows_cols(x: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
@@ -279,18 +173,6 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 
            sub2d(theta.clone(), emult2d(mult( tx, sub2d( mult( x, theta.clone() ), y ) ), a))
           });
-
-        // let ans = (0..iterations)
-        //   .fold( theta, |theta, _iteration|{
-        //     let x = x.clone();
-        //     let y = y.clone();
-        //     let tx = tx.clone();
-        //     let a = a.clone();
-
-        //   let mut d = mult( tx, sub2d( mult(x, theta.clone()), y ) );
-        //   d = emult2d(d, a);
-        //   sub2d(theta, d)
-        // });
 
         Ok(ans.encode(env))
       })();

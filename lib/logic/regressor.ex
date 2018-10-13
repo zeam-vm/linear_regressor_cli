@@ -15,13 +15,6 @@ defmodule NifRegressor do
 
   # Main Function
   def _fit(_x, _y, _theta, _alpha, _iteration), do: exit(:nif_not_loaded)
-  def _test(_x), do: exit(:nif_not_loaded)
-
-  def test(x) do
-    x 
-    |> to_float
-    |> _test
-  end
 
   # Wrapper
   def dot_product(a, b)
