@@ -41,12 +41,13 @@ rustler_export_nifs! {
   None
 }
 
-pub fn dot_product(x: Vec<Num>, y: Vec<Num>) -> Num {
+pub fn dot_product(x: &Vec<Num>, y: &Vec<Num>) -> Num {
   x.iter().zip(y.iter())
-  .map(|t| t.0 * t.1).fold(0.0, |sum, i| sum + i)
+  .map(|t| t.0 * t.1)
+  .fold(0.0, |sum, i| sum + i)
 }
 
-pub fn sub(x: Vec<Num>, y: Vec<Num>) -> Vec<Num> {
+pub fn sub(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
   x.iter().zip(y.iter())
   .map(|t| t.0 - t.1)
   .collect()
@@ -54,11 +55,11 @@ pub fn sub(x: Vec<Num>, y: Vec<Num>) -> Vec<Num> {
 
 pub fn sub2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
   x.iter().zip(y.iter())
-  .map(|t| sub(t.0.to_vec(), t.1.to_vec()))
+  .map(|t| sub(&t.0.to_vec(), &t.1.to_vec()))
   .collect()
 }
 
-pub fn emult(x: Vec<Num>, y: Vec<Num>) -> Vec<Num> {
+pub fn emult(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
   x.iter().zip(y.iter())
   .map(|t| t.0 * t.1)
   .collect()
@@ -66,7 +67,7 @@ pub fn emult(x: Vec<Num>, y: Vec<Num>) -> Vec<Num> {
 
 pub fn emult2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
   x.iter().zip(y.iter())
-  .map(|t| emult(t.0.to_vec(), t.1.to_vec()))
+  .map(|t| emult(&t.0.to_vec(), &t.1.to_vec()))
   .collect()
 }
 
@@ -82,6 +83,7 @@ fn new_vec2(row: usize, col: usize, init: Num) -> Vec<Vec<Num>> {
 pub fn transpose(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   let row :usize = x.len();
   let col :usize = x[0].len();
+  
   (0..col)
   .map(|c| {
     (0..row)
@@ -91,39 +93,13 @@ pub fn transpose(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   .collect()
 }
 
-fn swap_rows_cols(x: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
-  let mut first :Vec<Num> = Vec::new();
-  let mut rest :Vec<Vec<Num>> = Vec::new();
-  let mut ans :Vec<Vec<Num>> = Vec::new();
-
-  x.iter()
-  .for_each(|r| {
-    match r.as_slice().split_first() {
-      Some((head, tail)) => {
-        first.push(*head);
-        rest.push(tail.to_vec());
-      },
-      None => {},
-    }
-  });
-  
-  ans.push(first);
-  match rest.is_empty() {
-    true => Vec::new(),
-    false => {
-      ans.append(&mut swap_rows_cols(rest));
-      ans
-    }
-  }
-}
-
 pub fn mult (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   let ty = transpose(y);
 
   x.iter()
   .map(|i| {
     ty.iter()
-    .map(|j| dot_product(i.to_vec(), j.to_vec()))
+    .map(|j| dot_product(&i.to_vec(), &j.to_vec()))
     .collect()
   })
   .collect()
@@ -166,10 +142,6 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 
         let ans = (0..iterations)
           .fold( theta, |theta, _iteration|{
-            //let x = x.clone();
-            //let y = y.clone();
-            //let tx = tx.clone();
-            //let a = a.clone();
 
            sub2d(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
           });
@@ -192,21 +164,21 @@ fn nif_dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   let y: Vec<Num> = args[1].decode()?;
 
   // Return
-  Ok(dot_product(x, y).encode(env))
+  Ok(dot_product(&x, &y).encode(env))
 }
 
 fn nif_sub<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
   let x: Vec<Num> = args[0].decode()?;
   let y: Vec<Num> = args[1].decode()?;
   
-  Ok(sub(x, y).encode(env))
+  Ok(sub(&x, &y).encode(env))
 }
 
 fn nif_emult<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
   let x: Vec<Num> = args[0].decode()?;
   let y: Vec<Num> = args[1].decode()?;
   
-  Ok(emult(x, y).encode(env))
+  Ok(emult(&x, &y).encode(env))
 }
 
 fn new(first: i64, end: i64) -> Vec<i64> {
