@@ -42,7 +42,7 @@ rustler_export_nifs! {
 }
 
 pub fn dot_product(x: Vec<Num>, y: Vec<Num>) -> Num {
-  x.iter().zip(y.iter());
+  x.iter().zip(y.iter())
   .map(|t| t.0 * t.1).fold(0.0, |sum, i| sum + i)
 }
 
@@ -52,7 +52,7 @@ pub fn sub(x: Vec<Num>, y: Vec<Num>) -> Vec<Num> {
   .collect()
 }
 
-pub fn sub2d(x: Vec<Vec<Num>>, y: Vec<Vec<Num>>) -> Vec<Vec<Num>>{
+pub fn sub2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
   x.iter().zip(y.iter())
   .map(|t| sub(t.0.to_vec(), t.1.to_vec()))
   .collect()
@@ -64,7 +64,7 @@ pub fn emult(x: Vec<Num>, y: Vec<Num>) -> Vec<Num> {
   .collect()
 }
 
-pub fn emult2d(x: Vec<Vec<Num>>, y: Vec<Vec<Num>>) -> Vec<Vec<Num>>{
+pub fn emult2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
   x.iter().zip(y.iter())
   .map(|t| emult(t.0.to_vec(), t.1.to_vec()))
   .collect()
@@ -79,7 +79,7 @@ fn new_vec2(row: usize, col: usize, init: Num) -> Vec<Vec<Num>> {
   ans
 }
 
-pub fn transpose(x: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
+pub fn transpose(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   let row :usize = x.len();
   let col :usize = x[0].len();
   (0..col)
@@ -117,7 +117,7 @@ fn swap_rows_cols(x: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   }
 }
 
-pub fn mult (x: Vec<Vec<Num>>, y: Vec<Vec<Num>>) -> Vec<Vec<Num>> {
+pub fn mult (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   let ty = transpose(y);
 
   x.iter()
@@ -159,19 +159,19 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
         let alpha: Num = tuple.3;
         let iterations: i64 = tuple.4;
 
-        let tx = transpose(x.clone());
+        let tx = transpose(&x);
         let m = y.len() as Num;
         let (left, right) = (theta.len(), theta[0].len());
         let a = new_vec2(left, right, alpha / m);
 
         let ans = (0..iterations)
           .fold( theta, |theta, _iteration|{
-            let x = x.clone();
-            let y = y.clone();
-            let tx = tx.clone();
-            let a = a.clone();
+            //let x = x.clone();
+            //let y = y.clone();
+            //let tx = tx.clone();
+            //let a = a.clone();
 
-           sub2d(theta.clone(), emult2d(mult( tx, sub2d( mult( x, theta.clone() ), y ) ), a))
+           sub2d(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
           });
 
         Ok(ans.encode(env))
