@@ -1,294 +1,186 @@
 #[macro_use] extern crate rustler;
-#[macro_use] extern crate rustler_codegen;
+// #[macro_use] extern crate rustler_codegen;
 #[macro_use] extern crate lazy_static;
-
-extern crate scoped_pool;
-extern crate ocl;
 
 use rustler::{Env, Term, NifResult, Encoder};
 use rustler::env::{OwnedEnv, SavedTerm};
-use rustler::types::tuple::make_tuple;
+// use rustler::types::atom::Atom;
+// use rustler::types::list::ListIterator;
+// use rustler::types::map::MapIterator;
 
-use ocl::{ProQue, Buffer, MemFlags};
+use rustler::types::tuple::make_tuple;
+// use std::ops::Range;
+// use std::ops::RangeInclusive;
+
+type Num = f64;
 
 mod atoms {
-    rustler_atoms! {
-        atom ok;
-        //atom error;
-        //atom __true__ = "true";
-        //atom __false__ = "false";
-    }
+  rustler_atoms! {
+    atom ok;
+    // atom error;
+    //atom __true__ = "true";
+    //atom __false__ = "false";
+  }
 }
 
 rustler_export_nifs! {
-    "Elixir.LinearRegressorNif",
-    [
-    ("add", 2, add),
-    ("fit_nif", 5, fit_nif),
-    ],
-    None
+  "Elixir.LinearRegressorNif",
+  [
+    //("Elixir's func, number of arguments, Rust's func)
+    ("_dot_product", 2, nif_dot_product),
+    ("_zeros", 1, zeros),
+    ("_new", 2, nif_new),
+    ("_sub", 2, nif_sub),
+    ("_emult", 2, nif_emult),
+    ("_fit", 5, nif_fit), 
+  ],
+  None
 }
 
-lazy_static! {
-    static ref POOL:scoped_pool::Pool = scoped_pool::Pool::new(2);
+pub fn dot_product(x: &Vec<Num>, y: &Vec<Num>) -> Num {
+  x.iter().zip(y.iter())
+  .map(|t| t.0 * t.1)
+  .fold(0.0, |sum, i| sum + i)
 }
 
-fn add<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let num1: i64 = try!(args[0].decode());
-    let num2: i64 = try!(args[1].decode());
-
-    Ok((atoms::ok(), num1 + num2).encode(env))
+pub fn sub(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
+  x.iter().zip(y.iter())
+  .map(|t| t.0 - t.1)
+  .collect()
 }
 
-pub struct Matrix {
-    container: Vec<f64>,
-    row_size: usize,
-    col_size: usize,
-    col_near_pow_2: usize,
-    col_shift: usize,
-    size: usize,
-    transpose: bool,
+pub fn sub2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
+  x.iter().zip(y.iter())
+  .map(|t| sub(&t.0.to_vec(), &t.1.to_vec()))
+  .collect()
 }
 
-fn near_pow_2(num: usize) -> (usize, usize) {
-    if num <= 0 {
-        (0, 0)
-    } else if (num & (num - 1)) == 0 {
-        let mut n = num;
-        let mut shift: usize = 0;
-        while n > 0 {
-            n >>= 1;
-            shift += 1;
-        }
-        (num, shift)
-    } else {
-        let mut ret: usize = 1;
-        let mut n = num;
-        let mut shift: usize = 0;
-        while n > 0 {
-            ret <<= 1;
-            n >>= 1;
-            shift += 1;
-        }
-        (ret, shift)
-    }
+pub fn emult(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
+  x.iter().zip(y.iter())
+  .map(|t| t.0 * t.1)
+  .collect()
 }
 
-impl Matrix {
-  pub fn new(row_size: usize, col_size: usize, initial: f64) -> Matrix {
-    let col = near_pow_2(col_size + 1 + 1);
-    let col_near_pow_2 = col.0.clone();
-    let col_shift = col.1.clone();
-    let mut size = row_size + 1;
-    let mut c = col_shift;
-    while c > 0 {
-      size <<= 1;
-      c -= 1;
-    }
-      let mut container: Vec<f64> = Vec::with_capacity(size);
-      (0..row_size).for_each(|r| {
-        print!("r: {}", r);
-        (0..col_size).for_each(|c| {
-          container.push(initial)
-        });
-        (col_size..col_near_pow_2).for_each(|_c| {
-          container.push(0.0)
-        });
-      });
-      Matrix{
-        container: container,
-        row_size: row_size,
-        col_size: col_size,
-        col_near_pow_2: col_near_pow_2,
-        col_shift: col_shift,
-        size: size,
-        transpose: false,
-      }
-    }
-
-    pub fn new_from_vec(vec: Vec<Vec<f64>>) -> Matrix {
-        let row_size: usize = vec.len();
-        let col_size = vec[0].len();
-        let col = near_pow_2(col_size + 1);
-        let col_near_pow_2 = col.0.clone();
-        let col_shift = col.1.clone();
-        let mut size = row_size;
-        let mut c = col_shift;
-        while c > 0 {
-            size <<= 1;
-            c -= 1;
-        }
-        let mut container: Vec<f64> = Vec::with_capacity(size);
-        (0..row_size).for_each(|r| {
-            match vec.get(r) {
-                Some(vec_r) => {
-                    (0..vec_r.len()).for_each(|c| {
-                        match vec_r.get(c) {
-                            Some(vec_c) => {
-                                container.push(*vec_c)
-                            },
-                            None => {},
-                        }
-                    });
-                    (vec_r.len()..col_near_pow_2).for_each(|_c| {
-                        container.push(0.0)
-                    });
-                },
-                None => {},
-            }
-        });
-        Matrix{
-            container: container,
-            row_size: row_size,
-            col_size: col_size,
-            col_near_pow_2: col_near_pow_2,
-            col_shift: col_shift,
-            size: size,
-            transpose: false,
-        }
-    }
-
-pub fn container(&self) -> Vec<f64> {
-    self.container.clone()
+pub fn emult2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
+  x.iter().zip(y.iter())
+  .map(|t| emult(&t.0.to_vec(), &t.1.to_vec()))
+  .collect()
 }
 
-
-pub fn transpose(&self) -> Matrix {
-    // Matrix{
-    //     container: self.container(),
-    //     row_size: self.row_size,
-    //     col_size: self.col_size,
-    //     col_near_pow_2: self.col_near_pow_2,
-    //     col_shift: self.col_shift,
-    //     size: self.size,
-    //     transpose: !self.transpose,
-    // }
-    Matrix{ transpose: !self.transpose, .. self}
+pub fn transpose(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
+  let row :usize = x.len();
+  let col :usize = x[0].len();
+  
+  (0..col)
+  .map(|c| {
+    (0..row)
+    .map( |r| x[r][c] )
+    .collect()
+  })
+  .collect()
 }
 
-pub fn col_size(&self) -> usize {
-    match self.transpose {
-        false => self.col_size,
-        true => self.row_size
-    }
+pub fn mult (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
+  let ty = transpose(y);
+
+  x.iter()
+  .map(|i| {
+    ty.iter()
+    .map(|j| dot_product(&i.to_vec(), &j.to_vec()))
+    .collect()
+  })
+  .collect()
 }
 
-pub fn row_size(&self) -> usize {
-    match self.transpose {
-        false => self.row_size,
-        true => self.col_size
-    }
-}
+fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
+  let pid = env.pid();
+  let mut my_env = OwnedEnv::new();
 
-pub fn length(&self) -> usize {
-    match self.transpose {
-        false => self.row_size,
-        true => self.col_size
-    }
-}
+  let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
+    let _x = args[0].in_env(env);
+    let _y = args[1].in_env(env);
+    let theta = args[2].in_env(env);
+    let alpha = args[3].in_env(env);
+    let iterations = args[4].in_env(env);
+    Ok(my_env.save(make_tuple(env, &[_x, _y, theta, alpha, iterations])))
+  })?;
 
-pub fn size(&self) -> (usize, usize) {
-    (self.row_size(), self.col_size())
-}
+  std::thread::spawn(move ||  {
+    my_env.send_and_clear(&pid, |env| {
+      let result: NifResult<Term> = (|| {
+        let tuple = saved_list
+        .load(env).decode::<(
+          Term, 
+          Term,
+          Term,
+          Num,
+          i64)>()?; 
+        
+        let x: Vec<Vec<Num>> = try!(tuple.0.decode());
+        let y: Vec<Vec<Num>> = try!(tuple.1.decode());
+        let theta: Vec<Vec<Num>> = try!(tuple.2.decode());
+        let alpha: Num = tuple.3;
+        let iterations: i64 = tuple.4;
 
-pub fn i(&self, row: usize, col: usize) -> usize {
-    match self.transpose {
-        false => (row << self.col_shift) + col,
-        true  => (col << self.col_shift) + row
-    }
-}
+        let tx = transpose(&x);
+        let m = y.len() as Num;
+        let (left, right) = (theta.len(), theta[0].len());
+        let a = new_vec2(left, right, alpha / m);
 
-pub fn row_vec(&self, row: usize) -> Vec<f64> {
-    let mut ret: Vec<f64> = Vec::with_capacity(self.col_size());
-    (0..(self.col_size())).for_each(|c| {
-        ret.push(self.container[self.i(row, c)]);
+        let ans = (0..iterations)
+          .fold( theta, |theta, _iteration|{
+
+           sub2d(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
+          });
+
+        Ok(ans.encode(env))
+      })();
+      match result {
+          Err(_err) => env.error_tuple("test failed".encode(env)),
+          Ok(term) => term
+      }  
     });
-    ret
+  });
+  Ok(atoms::ok().to_term(env))
 }
 
-pub fn col_vec(&self, col: usize) -> Vec<f64> {
-    let mut ret: Vec<f64> = Vec::with_capacity(self.row_size());
-    (0..(self.row_size())).for_each(|r| {
-        ret[r] = self.container[self.i(r, col)];
-    });
-    ret
+fn nif_dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
+  // Initialize Arguments
+  // Decode to Vector
+  let x: Vec<Num> = args[0].decode()?;
+  let y: Vec<Num> = args[1].decode()?;
+
+  // Return
+  Ok(dot_product(&x, &y).encode(env))
 }
 
-pub fn to_vec(&self) -> Vec<Vec<f64>> {
-    let mut ret: Vec<Vec<f64>> = Vec::with_capacity(self.row_size());
-    (0..(self.row_size())).for_each(|r| {
-        ret.push(self.row_vec(r))
-    });
-    ret
-}
+fn nif_sub<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+  let x: Vec<Num> = args[0].decode()?;
+  let y: Vec<Num> = args[1].decode()?;
+  
+  Ok(sub(&x, &y).encode(env))
 }
 
-fn fit_nif<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-    let pid = env.pid();
-    let mut my_env = OwnedEnv::new();
+fn nif_emult<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+  let x: Vec<Num> = args[0].decode()?;
+  let y: Vec<Num> = args[1].decode()?;
+  
+  Ok(emult(&x, &y).encode(env))
+}
 
-    let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
-        let x_arg = args[0].in_env(env);
-        let y_arg = args[1].in_env(env);
-        let theta_arg = args[2].in_env(env);
-        let alpha_arg = args[3].in_env(env);
-        let iteration_arg = args[4].in_env(env);
-        Ok(my_env.save(make_tuple(env, &[x_arg, y_arg, theta_arg, alpha_arg, iteration_arg])))
-    })?;
+fn new(first: i64, end: i64) -> Vec<i64> {
+  (first..end).collect()
+}
 
-    POOL.spawn(move || {
-        my_env.send_and_clear(&pid, |env| {
-            let result: NifResult<Term> = (|| {
-                let tuple = saved_list.load(env).decode::<(Term, Term, Term, f64, i64)>()?;
-                let x = Matrix::new_from_vec(tuple.0.decode::<Vec<Vec<f64>>>()?);
-                let y = Matrix::new_from_vec(tuple.1.decode::<Vec<Vec<f64>>>()?);
-                let mut theta = Matrix::new_from_vec(tuple.2.decode::<Vec<Vec<f64>>>()?);
-                let alpha: f64 = tuple.3;
-                let iteration: i64 = tuple.4;
-                let m = y.length();
-                let tx = x.transpose();
-                let size = theta.size();
-                let a = Matrix::new( theta.row_size(), theta.col_size(), alpha * ( 1.0 / m as f64) );
-                (0..=iteration).for_each(|_i| {
-                 let trans_theta = theta.transpose();
+fn nif_new<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+  let first: i64 = try!(args[0].decode());
+  let end: i64 = try!(args[1].decode());
 
-             });
+  Ok(new(first, end).encode(env))
+}
 
-                let src = r#"
-                __kernel void mult(
-                __global const double* A,
-                __global const double* B,
-                __global double* Result,
-                const int wA, const int sA,
-                const int wB, const int sB) {
-                    const int x = get_global_id(0);
-                    const int y = get_global_id(1);
-                    float value = 0;
-                    for (int i = 0; i < wA; ++i) {
-                        int index_a = y << sA + i;
-                        int index_b = i << sB + x;
-                        float elementA = A[index_a];
-                        float elementB = B[index_b];
-                        value = value + elementA * elementB;
-                    }
-                    Result[wB * y + x] = value;
-                }
-                "#;
-
-
-                let pro_que = ProQue::builder()
-                .src(src)
-                    .dims(x.container().capacity()) // TODO: set dims                    .build().expect("Build ProQue");
-                    .build().expect("Build ProQue");
-
-                    Ok(a.to_vec().encode(env))
-                })();
-                match result {
-                    Err(_err) => env.error_tuple("test failed".encode(env)),
-                    Ok(term) => term
-                }
-            });
-    });
-
-    Ok(atoms::ok().encode(env))
+fn zeros<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+  let len: usize = (args[0]).decode()?;
+  let zero_vec = vec![0; len];
+  Ok(zero_vec.encode(env))
 }

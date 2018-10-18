@@ -1,4 +1,4 @@
-# Nif for Elixir.LinearRegressorNif
+# Nif for Elixir.NifRegressor
 
 ## To build the NIF module:
 
@@ -9,8 +9,8 @@
 ## To load the NIF:
 
 ```elixir
-defmodule LinearRegressorNif do
-    use Rustler, otp_app: [otp app], crate: "linear_regressor_nif"
+defmodule NifRegressor do
+    use Rustler, otp_app: [otp app], crate: "regressor"
 
     # When your NIF is loaded, it will override this function.
     def add(_a, _b), do: :erlang.nif_error(:nif_not_loaded)

@@ -15,7 +15,7 @@ defmodule LinearRegressorCli.MixProject do
 
   defp rustler_crates() do
   	[linear_regressor_nif: [
-  		path: "native/regressor",
+  		path: "native/linear_regressor_nif",
   		mode: :release,
   	]]
   end

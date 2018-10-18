@@ -1,148 +1,74 @@
 defmodule LinearRegressorNif do
-	use Rustler, otp_app: :linear_regressor_cli, crate: :linear_regressor_nif
+  use Rustler, otp_app: :linear_regressor_cli, crate: :linear_regressor_nif
 
+  @doc """
+  ## Examples
+  
+  """
 
- 	@doc """
- 	add.
+  # For List Function
+  def _dot_product(_a, _b), do: exit(:nif_not_loaded)
+  def _zeros(_a), do: exit(:nif_not_loaded)
+  def _new(_a, _b), do: exit(:nif_not_loaded)
+  def _sub(_a, _b), do: exit(:nif_not_loaded)
+  def _emult(_a, _b), do: exit(:nif_not_loaded)
 
-	## Examples
+  # Main Function
+  def _fit(_x, _y, _theta, _alpha, _iteration), do: exit(:nif_not_loaded)
 
-	iex> LinearRegressorNif.add(1, 2)
-	{:ok, 3}
-	"""
-	def add(_a, _b), do: exit(:nif_not_loaded)
+  # Wrapper
+  def dot_product(a, b)
+    when is_list(a) and is_list(b) do
+      a
+      |> to_float
+      |> _dot_product( b |> to_float )
+  end
 
-    def predict( x, theta ), do: Matrix.mult( x, theta )
-
-	def cost( x, y, theta ) do
-		m = length( y )
-
-		hx_y = x
-			|> Matrix.mult( theta )
-			|> Matrix.sub( y )
-
-		hx_y_2 = Matrix.emult( hx_y, hx_y )
-
-		sum = hx_y_2
-			|> Enum.reduce( 0, fn( x, acc ) -> Enum.at( x, 0 ) + acc end )
-
-		sum / ( m * 2 )
-	end
-
-    def fit( x, y, theta, alpha, iterations ) do
-        m = length( y )
-        tx = Matrix.transpose( x )
-        size = Matrix.size( theta )
-        a = Matrix.new( elem( size, 0 ), elem( size, 1 ), alpha * ( 1 / m ) )
-
-        0..iterations
-        |> Enum.to_list
-        |> Enum.reduce( theta, fn( _iteration, theta ) ->
-            trans_theta = Matrix.transpose( theta )
-            d = Enum.map(x, fn(row)->
-            		Enum.map(trans_theta, &dot_product(row, &1))
-            	end)
-            d =	Enum.zip(d, y)
-            |> Enum.map(fn({a,b})->subtract_rows(a,b) end)
-
-            d = Matrix.transpose( d )
-            d = Enum.map(d, fn(row) ->
-            		Enum.map(tx, &dot_product(row, &1))
-            	end)
-            d = Matrix.transpose( d )
-            d = Enum.zip(d, a)
-            	|> Enum.map( fn({a, b})->emult_rows(a,b) end)
-            Enum.zip(theta, d)
-            |> Enum.map( fn({a,b})->subtract_rows(a,b) end)
-        end )
+  # Sub Function
+  def to_float(num) when is_integer(num), do: num /1
+  def to_float(r) when is_list(r) do
+    r
+    |>Enum.map( &to_float(&1) )
+  end
+  def to_float(any), do: any
+  
+  def fit( x, y, theta, alpha, iterations ) do
+    _fit(
+      x |> to_float, 
+      y |> to_float, 
+      theta |> to_float, 
+      alpha |> to_float,
+      iterations)
+    receive do
+      l -> l
     end
+  end
 
-    def fit0( x, y, theta, alpha, iterations ) do
-        m = length( y )
-        tx = Matrix.transpose( x )
-        size = Matrix.size( theta )
-        a = Matrix.new( elem( size, 0 ), elem( size, 1 ), alpha * ( 1 / m ) )
+  # def fit_with_nif( x, y, theta, alpha, iterations ) do
+  #   m = length( y )
+  #   tx = Matrix.transpose( x )
+  #   size = Matrix.size( theta )
+  #   a = Matrix.new( elem( size, 0 ), elem( size, 1 ), alpha * ( 1 / m ) )
 
-        0..0
-        |> Enum.to_list
-        |> Enum.reduce( theta, fn( _iteration, theta ) ->
-            trans_theta = Matrix.transpose( theta )
-            d = Enum.map(x, fn(row)->
-            		Enum.map(trans_theta, &dot_product(row, &1))
-            	end)
-        end )
-    end
+  #   0..iterations
+  #     |> Enum.to_list
+  #     |> Enum.reduce( theta, fn( _iteration, theta ) ->
+  #       trans_theta = Matrix.transpose( theta )
+  #       d = Enum.map(x, fn(row)->
+  #         Enum.map(trans_theta, &dot_product(row, &1)) end)
+  #       d = Enum.zip(d, y)
+  #        |> Enum.map(fn({a,b})->sub(a,b)end)
 
-
-    @doc """
-
-    ## Examples
-
-    iex> LinearRegressorNif.fit_nif([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [[4.0], [5.0], [6.0]], [[0.0], [0.0], [0.0]], 0.0000003, 10000); receive do l -> l end
-    [[1.0e-7], [1.0e-7], [1.0e-7]]
-
-    iex> LinearRegressorNif.fit0([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [[4.0], [5.0], [6.0]], [[0.0], [0.0], [0.0]], 0.0000003, 0)
-    [[0.0], [0.0], [0.0]]
-
-    """
-    def fit_nif( _x, _y, _theta, _alpha, _iteration ), do: exit(:nif_not_loaded)
-
- 	@doc """
- 	subtract_rows.
-
-	## Examples
-
-	iex> LinearRegressorNif.subtract_rows([4, 5, 6], [1, 2, 3])
-	[3, 3, 3]
-
-	iex> LinearRegressorNif.subtract_rows([4.0, 5.0, 6.0], [1.0, 2.0, 3.0])
-	[3.0, 3.0, 3.0]
-
-	"""
-	def subtract_rows(r1, r2) when r1 == []  or  r2 == [], do: []
-	def subtract_rows(r1, r2) do
-		[h1|t1] = r1
-		[h2|t2] = r2
-		[h1-h2] ++ subtract_rows(t1,t2)
-	end
-
- 	@doc """
- 	dot_product.
-
-	## Examples
-
-	iex> LinearRegressorNif.dot_product([1, 2, 3], [4, 5, 6])
-	32
-
-	iex> LinearRegressorNif.dot_product([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
-	32.0
-
-	"""
-    def dot_product(r1, _r2) when r1 == [], do: 0
-  	def dot_product(r1, r2) do
-    	[h1|t1] = r1
-    	[h2|t2] = r2
-    	(h1*h2) + dot_product(t1, t2)
-	end
-
-
- 	@doc """
- 	dot_product.
-
-	## Examples
-
-	iex> LinearRegressorNif.emult_rows([1, 2, 3], [4, 5, 6])
-	[4, 10, 18]
-
-	iex> LinearRegressorNif.emult_rows([1.0, 2.0, 3.0], [4.0, 5.0, 6.0])
-	[4.0, 10.0, 18.0]
-
-	"""
-	def emult_rows(r1, r2) when r1 == []  or  r2 == [], do: []
-	def emult_rows(r1, r2) do
-		[h1|t1] = r1
-		[h2|t2] = r2
-		[h1*h2] ++ emult_rows(t1,t2)
-	end
-
+  #       d = Matrix.transpose( d )
+  #       d = Enum.map(d, fn(row) ->
+  #           Enum.map(tx, &dot_product(row, &1))
+  #       end)
+  #       d = Matrix.transpose( d )
+  #       d = Enum.zip(d, a)
+  #         |> Enum.map( fn({a, b})->emult(a,b) end)
+  #       Enum.zip(theta, d)
+  #       |> Enum.map( fn({a,b})->sub(a,b) end)
+  #     end)
+  #   end
+  # # end
 end
