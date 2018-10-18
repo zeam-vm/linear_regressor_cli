@@ -124,12 +124,12 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 
         let tx = transpose(&x);
         let m = y.len() as Num;
-        let (left, right) = (theta.len(), theta[0].len());
-        let a = new_vec2(left, right, alpha / m);
+        let (row, col) = (theta.len(), theta[0].len());
+        let tmp = alpha/m;
+        let a :Vec<Vec<Num>> = vec![vec![tmp; col]; row]; 
 
         let ans = (0..iterations)
           .fold( theta, |theta, _iteration|{
-
            sub2d(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
           });
 

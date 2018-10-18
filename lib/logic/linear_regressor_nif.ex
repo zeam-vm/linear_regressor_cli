@@ -33,11 +33,18 @@ defmodule LinearRegressorNif do
   def to_float(any), do: any
   
   def fit( x, y, theta, alpha, iterations ) do
+    # _fit(
+    #   x |> to_float, 
+    #   y |> to_float, 
+    #   theta |> to_float, 
+    #   alpha |> to_float,
+    #   iterations)
+
     _fit(
-      x |> to_float, 
-      y |> to_float, 
-      theta |> to_float, 
-      alpha |> to_float,
+      x , 
+      y , 
+      theta , 
+      alpha ,
       iterations)
     receive do
       l -> l
