@@ -2,15 +2,25 @@
 // #[macro_use] extern crate rustler_codegen;
 #[macro_use] extern crate lazy_static;
 
-use rustler::{Env, Term, NifResult, Encoder};
+extern crate ocl;
+extern crate rayon;
+extern crate scoped_pool;
+
+use rustler::{Env, Term, NifResult, Encoder, Error};
 use rustler::env::{OwnedEnv, SavedTerm};
 // use rustler::types::atom::Atom;
 // use rustler::types::list::ListIterator;
 // use rustler::types::map::MapIterator;
 
 use rustler::types::tuple::make_tuple;
-// use std::ops::Range;
+//use std::mem;
+// use std::slice;
+ use std::str;
 // use std::ops::RangeInclusive;
+
+use rayon::prelude::*;
+
+use ocl::{ProQue, Buffer, MemFlags};
 
 type Num = f64;
 
@@ -33,14 +43,135 @@ rustler_export_nifs! {
     ("_sub", 2, nif_sub),
     ("_emult", 2, nif_emult),
     ("_fit", 5, nif_fit), 
+    ("_call_ocl", 2, call_ocl),
+    ("gpuinfo", 0, gpuinfo),
   ],
   None
+}
+
+lazy_static! {
+    static ref POOL:scoped_pool::Pool = scoped_pool::Pool::new(2);
 }
 
 pub fn dot_product(x: &Vec<Num>, y: &Vec<Num>) -> Num {
   x.iter().zip(y.iter())
   .map(|t| t.0 * t.1)
   .fold(0.0, |sum, i| sum + i)
+}
+
+pub fn gpuinfo<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+
+  use ocl::{Platform};
+  let platform = Platform::default();
+  println!("PlatformList{:?}", ocl::Platform::list());
+  println!("Profile:{:?}", platform.info(ocl::enums::PlatformInfo::Profile));  
+  println!("Version:{:?}", platform.info(ocl::enums::PlatformInfo::Version));
+  println!("Name:{:?}", platform.info(ocl::enums::PlatformInfo::Name));
+  println!("Vendor:{:?}", platform.info(ocl::enums::PlatformInfo::Vendor));
+  // println!("Extensions:{:?}", platform.info(ocl::enums::PlatformInfo::Extensions));
+  
+  Ok(atoms::ok().to_term(env))
+}
+
+
+pub fn call_ocl<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+  let pid = env.pid();
+  let mut my_env = OwnedEnv::new();
+
+  let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
+    let _x = args[0].in_env(env);
+    let _y = args[1].in_env(env);
+    Ok(my_env.save(make_tuple(env, &[_x, _y])))
+  })?;
+
+
+  std::thread::spawn(move ||  {
+    my_env.send_and_clear(&pid, |env| {
+      let result: NifResult<Term> = (|| {
+        let tuple = saved_list
+        .load(env).decode::<(
+          Term,
+          Term
+        )>()?; 
+        
+        let x: Vec<Num> = try!(tuple.0.decode());
+        let y: Vec<Num> = try!(tuple.1.decode());
+        
+        let result: ocl::Result<(Vec<Num>)> = dot_product_ocl(&x, &y);
+        match result {
+          Ok(res) => Ok(res[0].encode(env)),
+          Err(_) =>  Err(Error::BadArg),
+        }
+      })();
+      match result {
+          Err(_err) => env.error_tuple("test failed".encode(env)),
+          Ok(term) => term
+      }  
+    });
+  });
+  Ok(atoms::ok().to_term(env))
+}
+
+pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
+  let src = r#"
+    __kernel void calc(
+      __global double* x, 
+      __global double* y,
+      long size, 
+      __global double* output
+    ) {
+      size_t id = get_global_id(0);
+      size_t len = size; 
+
+      double tmp = 0;
+      
+      for(int i = 0; i < len; ++i){
+        tmp += x[i + id] * y[i + id];
+      }
+
+      output[id] = tmp;
+    }
+  "#;
+
+
+  let pro_que = ProQue::builder()
+    .src(src)
+    .dims(x.len())
+    .build().expect("Build ProQue");
+
+  let source_buffer_x = Buffer::builder()
+    .queue(pro_que.queue().clone())
+    .flags(MemFlags::new().read_only())
+    .len(x.len())
+    .copy_host_slice(&x)
+    .build()?;
+
+  let source_buffer_y = Buffer::builder()
+    .queue(pro_que.queue().clone())
+    .flags(MemFlags::new().read_only())
+    .len(y.len())
+    .copy_host_slice(&y)
+    .build()?;
+
+  let result_buffer = Buffer::<Num>::builder()
+    .queue(pro_que.queue().clone())
+    .flags(MemFlags::new().write_only())
+    .len(x.len())
+    .build()?;
+
+  let kernel = pro_que.kernel_builder("calc")
+    .arg(&source_buffer_x)
+    .arg(&source_buffer_y)
+    .arg(&x.len())
+    .arg(&result_buffer)
+    .build()?;
+
+  unsafe { kernel.enq()?; }
+
+  let mut result = vec![0.0; result_buffer.len()];
+  // let mut result = 0.0;
+  result_buffer.read(&mut result).enq()?;
+  Ok(result)
 }
 
 pub fn sub(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
@@ -110,11 +241,12 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
       let result: NifResult<Term> = (|| {
         let tuple = saved_list
         .load(env).decode::<(
-          Term, 
+          Term,
           Term,
           Term,
           Num,
-          i64)>()?; 
+          i64
+        )>()?; 
         
         let x: Vec<Vec<Num>> = try!(tuple.0.decode());
         let y: Vec<Vec<Num>> = try!(tuple.1.decode());
@@ -145,12 +277,9 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 }
 
 fn nif_dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
-  // Initialize Arguments
-  // Decode to Vector
   let x: Vec<Num> = args[0].decode()?;
   let y: Vec<Num> = args[1].decode()?;
 
-  // Return
   Ok(dot_product(&x, &y).encode(env))
 }
 
@@ -184,3 +313,4 @@ fn zeros<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
   let zero_vec = vec![0; len];
   Ok(zero_vec.encode(env))
 }
+

@@ -8,8 +8,24 @@ name = "linear_regressor_nif"
 path = "src/lib.rs"
 crate-type = ["dylib"]
 
+# 最高の性能を得るためにreleaseプロファイルを調整する 
+[profile.release]
+# 最適化レベル。デフォルトは2
+opt-level = 3
+
+# LLVMのcodegenの多重度。デフォルトは16。
+# 数字を増やすとコンパイル時間が短くなるが、最適化の機会が減ってしまう。
+# 1にするとコンパイル時間が長くなるが、コンパイル後のバイナリでは最高の性能が得られる。
+codegen-units = 1
+
 [dependencies]
 rustler = "0.18.0"
 rustler_codegen = "0.18.0"
 lazy_static = "1.0"
-ndarray = "0.11.0"
+ocl = "0.19.1"
+ocl-extras = "0.1"
+rayon = "1.0"
+scoped-pool = "*"
+
+
+
