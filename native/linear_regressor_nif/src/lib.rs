@@ -6,19 +6,10 @@ extern crate ocl;
 extern crate rayon;
 extern crate scoped_pool;
 
-use rustler::{Env, Term, NifResult, Encoder, Error};
+use rustler::{Env, Term, NifResult, Encoder};
 use rustler::env::{OwnedEnv, SavedTerm};
-// use rustler::types::atom::Atom;
-// use rustler::types::list::ListIterator;
-// use rustler::types::map::MapIterator;
-
 use rustler::types::tuple::make_tuple;
-//use std::mem;
-// use std::slice;
- use std::str;
-// use std::ops::RangeInclusive;
-
-use rayon::prelude::*;
+use std::str;
 
 use ocl::{ProQue, Buffer, MemFlags};
 
@@ -49,9 +40,9 @@ rustler_export_nifs! {
   None
 }
 
-lazy_static! {
-    static ref POOL:scoped_pool::Pool = scoped_pool::Pool::new(2);
-}
+// lazy_static! {
+//     static ref POOL:scoped_pool::Pool = scoped_pool::Pool::new(2);
+// }
 
 pub fn dot_product(x: &Vec<Num>, y: &Vec<Num>) -> Num {
   x.iter().zip(y.iter())
@@ -59,22 +50,46 @@ pub fn dot_product(x: &Vec<Num>, y: &Vec<Num>) -> Num {
   .fold(0.0, |sum, i| sum + i)
 }
 
-pub fn gpuinfo<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+pub fn gpuinfo<'a>(env: Env<'a>, _args: &[Term<'a>]) -> NifResult<Term<'a>> {
+  use ocl::{Platform, Device};
+  use ocl::enums::{PlatformInfo, DeviceInfo, DeviceInfoResult};
 
-  use ocl::{Platform};
   let platform = Platform::default();
-  println!("PlatformList{:?}", ocl::Platform::list());
-  println!("Profile:{:?}", platform.info(ocl::enums::PlatformInfo::Profile));  
-  println!("Version:{:?}", platform.info(ocl::enums::PlatformInfo::Version));
-  println!("Name:{:?}", platform.info(ocl::enums::PlatformInfo::Name));
-  println!("Vendor:{:?}", platform.info(ocl::enums::PlatformInfo::Vendor));
+  let device = Device::first(platform).unwrap();
+
+  println!("PlatformList{:?}", Platform::list());
+  println!("Profile:{:?}", platform.info(PlatformInfo::Profile));  
+  println!("Version:{:?}", platform.info(PlatformInfo::Version));
+  println!("Name:{:?}", platform.info(PlatformInfo::Name));
+  println!("Vendor:{:?}", platform.info(PlatformInfo::Vendor));
   // println!("Extensions:{:?}", platform.info(ocl::enums::PlatformInfo::Extensions));
+  println!("Device Name:{:?}", device.name());
+  println!("Device Vendor:{:?}", device.vendor());
+
+  // let max_local_size = match device.info(MaxWorkGroupSize){ 
+  //   //OclResult<DeviceInfoResult>
+  //   Ok(res) => res,
+  //   Err(err) => err
+  // };
+
+  let max_local_size: usize = match device.info(DeviceInfo::MaxWorkGroupSize){
+    Ok(DeviceInfoResult::MaxWorkGroupSize(res)) => res,
+    _ => { 
+      println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
+      0
+    },
+  };
+
+  // assert_eq!(max_local_size, 1024);
+  println!("max_local_size:{:?}", max_local_size);
   
   Ok(atoms::ok().to_term(env))
 }
 
 
 pub fn call_ocl<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
+  use rustler::Error;
+
   let pid = env.pid();
   let mut my_env = OwnedEnv::new();
 
@@ -83,7 +98,6 @@ pub fn call_ocl<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     let _y = args[1].in_env(env);
     Ok(my_env.save(make_tuple(env, &[_x, _y])))
   })?;
-
 
   std::thread::spawn(move ||  {
     my_env.send_and_clear(&pid, |env| {
@@ -96,10 +110,13 @@ pub fn call_ocl<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
         
         let x: Vec<Num> = try!(tuple.0.decode());
         let y: Vec<Num> = try!(tuple.1.decode());
-        
+
         let result: ocl::Result<(Vec<Num>)> = dot_product_ocl(&x, &y);
         match result {
-          Ok(res) => Ok(res[0].encode(env)),
+          Ok(res) => {
+            // println!("{:?}", res);
+            Ok(res.iter().fold(0.0, |sum, i| sum + i).encode(env))
+          },
           Err(_) =>  Err(Error::BadArg),
         }
       })();
@@ -113,65 +130,139 @@ pub fn call_ocl<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
 }
 
 pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
+  use ocl::{Platform, Device};
+  use ocl::enums::{DeviceInfo, DeviceInfoResult};
+
+  let vec_size = x.len();
+  let platform = Platform::default();
+  let device = Device::first(platform).unwrap(); 
+  
+  //ワークグループ総数
+  let max_work_group_size: usize = match device.info(DeviceInfo::MaxWorkGroupSize){
+    Ok(DeviceInfoResult::MaxWorkGroupSize(res)) => res,
+    _ => { 
+      println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
+      1
+    },
+  };
+
+  // グローバルワークアイテムの総数 ? ワークグループあたりのワークアイテム数？
+  // let max_work_item_size: Vec<usize> = match device.info(DeviceInfo::MaxWorkItemSizes){
+  //   Ok(DeviceInfoResult::MaxWorkItemSizes(res)) => res,
+  //   _ => { 
+  //     println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
+  //     vec![1; 3]
+  //   },
+  // };
+
+  let kernel_vector_size = 4;
+
+  let local_work_item_size = 1; // if changed on MBA, don't execute 
+  let global_work_item_size = vec_size / kernel_vector_size; // because using double4
+  let num_groups = match global_work_item_size < local_work_item_size{
+    false => global_work_item_size / local_work_item_size,
+    true => 1,
+  };
+  
+  // println!("max_work_group_size:{:?}", max_work_group_size);
+  // println!("max_work_item_size:{:?}", max_work_item_size);
+  // println!("vec_size:{:?}", vec_size);
+  // println!("local_size:{:?}", local_work_item_size);
+  // println!("global_size:{:?}", global_work_item_size);
+  // println!("..so double4 * {:?} exsits", global_work_item_size);
+  // println!("num_groups:{:?}", num_groups);
+
   let src = r#"
     __kernel void calc(
-      __global double* x, 
-      __global double* y,
-      long size, 
-      __global double* output
-    ) {
-      size_t id = get_global_id(0);
-      size_t len = size; 
+      __global double4* x, 
+      __global double4* y,
+      __global double* output,
+      __local double4* partial_sums
+    ){
+      //printf("Hello world");
 
-      double tmp = 0;
-      
-      for(int i = 0; i < len; ++i){
-        tmp += x[i + id] * y[i + id];
+      int lid = get_local_id(0);
+      int gid = get_global_id(0);
+      int offset = get_local_size(0);
+
+      // printf("group_size:%d\n", offset);
+      // printf("x*y[%d] = %lf\n", gid, x[gid]*y[gid]);
+
+      partial_sums[lid] = x[gid] * y[gid];
+      barrier(CLK_LOCAL_MEM_FENCE);
+
+      // printf("partial_sums[%d]= %lf\n", lid, partial_sums[lid]);
+
+      for(int i = offset >> 1; i > 0; i >>= 1) {
+          if(lid < i) {
+              partial_sums[lid] += partial_sums[lid + i];
+          }
+          barrier(CLK_LOCAL_MEM_FENCE);
       }
 
-      output[id] = tmp;
+      // printf("group_id[%d]\n", get_group_id(0));
+
+      if(lid == 0) {
+        output[get_group_id(0)] = dot(partial_sums[0], (double4)1.0);
+      }
     }
   "#;
 
-
   let pro_que = ProQue::builder()
     .src(src)
-    .dims(x.len())
+    .dims(max_work_group_size)
     .build().expect("Build ProQue");
 
   let source_buffer_x = Buffer::builder()
     .queue(pro_que.queue().clone())
-    .flags(MemFlags::new().read_only())
-    .len(x.len())
+    .flags(MemFlags::new().read_write())
+    .len(vec_size)
     .copy_host_slice(&x)
     .build()?;
 
   let source_buffer_y = Buffer::builder()
     .queue(pro_que.queue().clone())
-    .flags(MemFlags::new().read_only())
-    .len(y.len())
+    .flags(MemFlags::new().read_write())
+    .len(vec_size)
     .copy_host_slice(&y)
     .build()?;
 
-  let result_buffer = Buffer::<Num>::builder()
+  let output_buffer = Buffer::<Num>::builder()
     .queue(pro_que.queue().clone())
     .flags(MemFlags::new().write_only())
-    .len(x.len())
+    .len(num_groups)
+    .fill_val(0f64)
     .build()?;
 
-  let kernel = pro_que.kernel_builder("calc")
-    .arg(&source_buffer_x)
+  let kernel : ocl::Kernel = pro_que.kernel_builder("calc")
+    .arg(&source_buffer_x) 
     .arg(&source_buffer_y)
-    .arg(&x.len())
-    .arg(&result_buffer)
+    .arg(&output_buffer)
+    .arg_local::<Num>(local_work_item_size)
     .build()?;
 
-  unsafe { kernel.enq()?; }
+  // let _res = pro_que.queue().flush();
 
-  let mut result = vec![0.0; result_buffer.len()];
-  // let mut result = 0.0;
-  result_buffer.read(&mut result).enq()?;
+  unsafe { 
+    kernel.cmd()
+      .queue(pro_que.queue())
+      .global_work_offset(kernel.default_global_work_offset())
+      .global_work_size(global_work_item_size)
+      // .local_work_size(kernel.default_local_work_size())
+      .local_work_size(local_work_item_size)
+      .enq()?;
+  }
+
+  //unsafe{ kernel.enq()?; }
+
+  println!("success execute kernel code");
+
+  
+  let mut result = vec![0f64; num_groups];
+  output_buffer.read(&mut result).enq()?;
+
   Ok(result)
+  // Ok(atoms::ok().encode(env))
 }
 
 pub fn sub(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {

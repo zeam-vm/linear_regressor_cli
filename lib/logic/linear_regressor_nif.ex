@@ -1,6 +1,8 @@
 defmodule LinearRegressorNif do
   use Rustler, otp_app: :linear_regressor_cli, crate: :linear_regressor_nif
 
+  @index 100_000_000
+
   @doc """
   ## Examples
 
@@ -25,7 +27,6 @@ defmodule LinearRegressorNif do
       a |> to_float,
       b |> to_float
     )
-    |> IO.puts()
   end
 
   def ocl_dp(a, b)
@@ -34,11 +35,8 @@ defmodule LinearRegressorNif do
       a |> to_float,
       b |> to_float
     )
-
     receive do
-      l ->
-        l
-        |> IO.puts()
+      l -> l 
     end
   end
 
@@ -69,35 +67,43 @@ defmodule LinearRegressorNif do
     )
 
     receive do
-      l -> l
+      l -> l 
     end
   end
 
-  def test_dp() do
-    m = 0..10_000_000 |> Enum.to_list()
+  # def test_dp() do
+  #   m = 0..10_000_000 |> Enum.to_list()
 
-    :timer.tc(fn -> Matrix.dot_product(m, m) end)
+  #   :timer.tc(fn -> Matrix.dot_product(m, m) end)
+  #   |> elem(0)
+  #   |> Kernel./(1_000_000)
+  #   |> IO.puts()
+  # end
+
+  def benchmark_dp_rust() do
+    :timer.tc(fn -> test_dp() end)
     |> elem(0)
     |> Kernel./(1_000_000)
     |> IO.puts()
   end
 
-  def test_dp_rust() do
-    m = 0..10_000_000 |> Enum.to_list()
-
-    :timer.tc(fn -> dot_product(m, m) end)
+  def benchmark_ocl_dp do
+    :timer.tc(fn -> test_ocl_dp() end)
     |> elem(0)
     |> Kernel./(1_000_000)
     |> IO.puts()
+  end
+
+  def test_dp do
+    m = List.duplicate(1, @index)
+    dot_product(m, m)
+    |>IO.puts
   end
 
   def test_ocl_dp do
-    m = 0..10_000_000 |> Enum.to_list()
-
-    :timer.tc(fn -> ocl_dp(m, m) end)
-    |> elem(0)
-    |> Kernel./(1_000_000)
-    |> IO.puts()
+    m = List.duplicate(1, @index)
+    ocl_dp(m, m)
+    |>IO.puts
   end
 end
 

@@ -24,11 +24,10 @@ error:
 
 # Benchmark
 ```bash
-$ mix run -e BostonNif.benchmark
-
-Compiling NIF crate :linear_regressor_nif (native/regressor)...
-    Finished release [optimized] target(s) in 0.21s
-7.156337
+$ mix run -e "LinearRegressorNif.ocl_dp [1,2], [3,4]"
+Compiling NIF crate :linear_regressor_nif (native/linear_regressor_nif)...
+    Finished release [optimized] target(s) in 1.67s
+11.0
 
 ```
 
