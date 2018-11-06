@@ -15,6 +15,7 @@ use ocl::{ProQue, Buffer, MemFlags};
 
 type Num = f64;
 
+
 mod atoms {
   rustler_atoms! {
     atom ok;
@@ -136,51 +137,77 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
   let vec_size = x.len();
   let platform = Platform::default();
   let device = Device::first(platform).unwrap(); 
-  
+  let f64_size :usize = 8;
+  let kernel_vector_dim :usize = 4;
+
   //ワークグループ総数
-  let max_work_group_size: usize = match device.info(DeviceInfo::MaxWorkGroupSize){
-    Ok(DeviceInfoResult::MaxWorkGroupSize(res)) => res,
+  // let max_work_group_size: usize = match device.info(DeviceInfo::MaxWorkGroupSize){
+  //   Ok(DeviceInfoResult::MaxWorkGroupSize(res)) => res,
+  //   _ => { 
+  //     println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
+  //     1
+  //   },
+  // };
+
+  // Num of Compute Unit(演算ユニット数) ＝ Streaming Multiprocessor(SM) 
+  let num_compute_unit: u32 = match device.info(DeviceInfo::MaxComputeUnits){
+    Ok(DeviceInfoResult::MaxComputeUnits(res)) => res,
     _ => { 
-      println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
-      1
+      println!("failed to get DeviceInfoResult::MaxComputeUnits");
+      0
+    },
+  };
+
+  // ローカルメモリ(スクラッチパッドメモリ)の最大容量
+  // このサイズを超えたデータをローカルメモリ(__local修飾子)としてカーネルに渡すと
+  // エラーが発生する．
+  let max_local_memory_size : u32 = match device.info(DeviceInfo::LocalMemSize){
+    Ok(DeviceInfoResult::LocalMemSize(res)) => res as u32,
+    _ => { 
+      println!("failed to get DeviceInfoResult::LocalMemSize");
+      0
     },
   };
 
   // グローバルワークアイテムの総数 ? ワークグループあたりのワークアイテム数？
-  // let max_work_item_size: Vec<usize> = match device.info(DeviceInfo::MaxWorkItemSizes){
-  //   Ok(DeviceInfoResult::MaxWorkItemSizes(res)) => res,
-  //   _ => { 
-  //     println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
-  //     vec![1; 3]
-  //   },
-  // };
-
-  let kernel_vector_size = 4;
-
-  let local_work_item_size = 1; // if changed on MBA, don't execute 
-  let global_work_item_size = vec_size / kernel_vector_size; // because using double4
-  let num_groups = match global_work_item_size < local_work_item_size{
-    false => global_work_item_size / local_work_item_size,
-    true => 1,
+  let max_work_item_size: Vec<usize> = match device.info(DeviceInfo::MaxWorkItemSizes){
+    Ok(DeviceInfoResult::MaxWorkItemSizes(res)) => res,
+    _ => { 
+      println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
+      vec![1; 3]
+    },
   };
+
+  // ローカルワークアイテムサイズ
+  // 1つのワークグループにつき処理されるワーク数の理論値
+  let work_item_num = (vec_size as u32 + num_compute_unit-1) / num_compute_unit;
   
-  // println!("max_work_group_size:{:?}", max_work_group_size);
-  // println!("max_work_item_size:{:?}", max_work_item_size);
-  // println!("vec_size:{:?}", vec_size);
-  // println!("local_size:{:?}", local_work_item_size);
-  // println!("global_size:{:?}", global_work_item_size);
+  // ローカルメモリーサイズ
+  let local_memory_size = match max_local_memory_size > (vec_size * f64_size) as u32{
+    true => vec_size*f64_size,
+    false => max_local_memory_size as usize,
+  }; 
+
+  // let num_groups = ;
+
+  println!("num_compute_unit:{:?}", num_compute_unit);
+  println!("max_local_memory_size:{:?}", max_local_memory_size);
+  println!("max_work_item_size:{:?}", max_work_item_size);
+  println!("work_item_num:{:?}", work_item_num);
+  println!("local_memory_size:{:?}", local_memory_size);
+  println!("vec_size:{:?}", vec_size);
+  
+  // println!("global_work_item_size:{:?}", global_work_item_size);
   // println!("..so double4 * {:?} exsits", global_work_item_size);
   // println!("num_groups:{:?}", num_groups);
 
   let src = r#"
-    __kernel void calc(
+    __kernel void dot_product4(
       __global double4* x, 
       __global double4* y,
       __global double* output,
       __local double4* partial_sums
     ){
-      //printf("Hello world");
-
       int lid = get_local_id(0);
       int gid = get_global_id(0);
       int offset = get_local_size(0);
@@ -189,15 +216,15 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
       // printf("x*y[%d] = %lf\n", gid, x[gid]*y[gid]);
 
       partial_sums[lid] = x[gid] * y[gid];
-      barrier(CLK_LOCAL_MEM_FENCE);
 
       // printf("partial_sums[%d]= %lf\n", lid, partial_sums[lid]);
 
       for(int i = offset >> 1; i > 0; i >>= 1) {
+          barrier(CLK_LOCAL_MEM_FENCE);
+
           if(lid < i) {
               partial_sums[lid] += partial_sums[lid + i];
           }
-          barrier(CLK_LOCAL_MEM_FENCE);
       }
 
       // printf("group_id[%d]\n", get_group_id(0));
@@ -206,11 +233,43 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
         output[get_group_id(0)] = dot(partial_sums[0], (double4)1.0);
       }
     }
+
+    __kernel void dot_product1(
+      __global double* x, 
+      __global double* y,
+      __global double* output,
+      __local double* partial_sums
+    ){
+      int lid = get_local_id(0);
+      int gid = get_global_id(0);
+      int offset = get_local_size(0);
+
+      // printf("group_size:%d\n", offset);
+      // printf("x*y[%d] = %lf\n", gid, x[gid]*y[gid]);
+
+      partial_sums[lid] = x[gid] * y[gid];
+
+      // printf("partial_sums[%d]= %lf\n", lid, partial_sums[lid]);
+
+      for(int i = offset >> 1; i > 0; i >>= 1) {
+          barrier(CLK_LOCAL_MEM_FENCE);
+
+          if(lid < i) {
+              partial_sums[lid] += partial_sums[lid + i];
+          }
+      }
+
+      // printf("group_id[%d]\n", get_group_id(0));
+
+      if(lid == 0) {
+        output[get_group_id(0)] = partial_sums[0];
+      }
+    }
   "#;
 
   let pro_que = ProQue::builder()
     .src(src)
-    .dims(max_work_group_size)
+    // .dims(vec_size)
     .build().expect("Build ProQue");
 
   let source_buffer_x = Buffer::builder()
@@ -230,15 +289,19 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
   let output_buffer = Buffer::<Num>::builder()
     .queue(pro_que.queue().clone())
     .flags(MemFlags::new().write_only())
-    .len(num_groups)
+    .len(vec_size)
     .fill_val(0f64)
     .build()?;
 
-  let kernel : ocl::Kernel = pro_que.kernel_builder("calc")
+  // assert_eq!("dot_product1", ["dot_product", &kernel_vector_dim.to_string()].concat());
+
+  let kernel : ocl::Kernel = 
+    pro_que.kernel_builder(
+      ["dot_product", &kernel_vector_dim.to_string()].concat())
     .arg(&source_buffer_x) 
     .arg(&source_buffer_y)
     .arg(&output_buffer)
-    .arg_local::<Num>(local_work_item_size)
+    .arg_local::<Num>(local_memory_size / 8)
     .build()?;
 
   // let _res = pro_que.queue().flush();
@@ -247,10 +310,14 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
     kernel.cmd()
       .queue(pro_que.queue())
       .global_work_offset(kernel.default_global_work_offset())
-      .global_work_size(global_work_item_size)
-      // .local_work_size(kernel.default_local_work_size())
-      .local_work_size(local_work_item_size)
+      .global_work_size(vec_size / kernel_vector_dim)
+      .local_work_size(kernel.default_local_work_size())
+      // .local_work_size(local_memory_size / 8)
       .enq()?;
+
+    // match res {
+
+    // }
   }
 
   //unsafe{ kernel.enq()?; }
@@ -258,7 +325,8 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
   println!("success execute kernel code");
 
   
-  let mut result = vec![0f64; num_groups];
+  let mut result = vec![0f64; vec_size
+  ];
   output_buffer.read(&mut result).enq()?;
 
   Ok(result)

@@ -1,7 +1,7 @@
 defmodule LinearRegressorNif do
   use Rustler, otp_app: :linear_regressor_cli, crate: :linear_regressor_nif
 
-  @index 100_000_000
+  @index 1.024e7
 
   @doc """
   ## Examples
@@ -80,8 +80,8 @@ defmodule LinearRegressorNif do
   #   |> IO.puts()
   # end
 
-  def benchmark_dp_rust() do
-    :timer.tc(fn -> test_dp() end)
+  def benchmark_rust_dp() do
+    :timer.tc(fn -> test_rust_dp() end)
     |> elem(0)
     |> Kernel./(1_000_000)
     |> IO.puts()
@@ -94,14 +94,14 @@ defmodule LinearRegressorNif do
     |> IO.puts()
   end
 
-  def test_dp do
-    m = List.duplicate(1, @index)
+  def test_rust_dp do
+    m = List.duplicate(1, @index |> Kernel.trunc)
     dot_product(m, m)
     |>IO.puts
   end
 
   def test_ocl_dp do
-    m = List.duplicate(1, @index)
+    m = List.duplicate(1, @index |> Kernel.trunc)
     ocl_dp(m, m)
     |>IO.puts
   end
