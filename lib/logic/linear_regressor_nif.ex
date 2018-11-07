@@ -1,7 +1,7 @@
 defmodule LinearRegressorNif do
   use Rustler, otp_app: :linear_regressor_cli, crate: :linear_regressor_nif
 
-  @index 1.024e7
+  @index 1.024e6
 
   @doc """
   ## Examples

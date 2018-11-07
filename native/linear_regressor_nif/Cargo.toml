@@ -16,7 +16,7 @@ opt-level = 3
 # LLVMのcodegenの多重度。デフォルトは16。
 # 数字を増やすとコンパイル時間が短くなるが、最適化の機会が減ってしまう。
 # 1にするとコンパイル時間が長くなるが、コンパイル後のバイナリでは最高の性能が得られる。
-codegen-units = 1
+codegen-units = 16
 
 [dependencies]
 rustler = "0.18.0"

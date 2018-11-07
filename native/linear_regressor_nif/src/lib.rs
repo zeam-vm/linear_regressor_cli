@@ -13,9 +13,6 @@ use std::str;
 
 use ocl::{ProQue, Buffer, MemFlags};
 
-type Num = f64;
-
-
 mod atoms {
   rustler_atoms! {
     atom ok;
@@ -41,11 +38,11 @@ rustler_export_nifs! {
   None
 }
 
-// lazy_static! {
-//     static ref POOL:scoped_pool::Pool = scoped_pool::Pool::new(2);
-// }
+lazy_static! {
+    static ref POOL:scoped_pool::Pool = scoped_pool::Pool::new(2);
+}
 
-pub fn dot_product(x: &Vec<Num>, y: &Vec<Num>) -> Num {
+pub fn dot_product(x: &Vec<f64>, y: &Vec<f64>) -> f64 {
   x.iter().zip(y.iter())
   .map(|t| t.0 * t.1)
   .fold(0.0, |sum, i| sum + i)
@@ -100,7 +97,7 @@ pub fn call_ocl<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
     Ok(my_env.save(make_tuple(env, &[_x, _y])))
   })?;
 
-  std::thread::spawn(move ||  {
+  POOL.spawn(move ||  {
     my_env.send_and_clear(&pid, |env| {
       let result: NifResult<Term> = (|| {
         let tuple = saved_list
@@ -109,10 +106,10 @@ pub fn call_ocl<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
           Term
         )>()?; 
         
-        let x: Vec<Num> = try!(tuple.0.decode());
-        let y: Vec<Num> = try!(tuple.1.decode());
+        let x: Vec<f64> = try!(tuple.0.decode());
+        let y: Vec<f64> = try!(tuple.1.decode());
 
-        let result: ocl::Result<(Vec<Num>)> = dot_product_ocl(&x, &y);
+        let result: ocl::Result<(Vec<f64>)> = dot_product_ocl(&x, &y);
         match result {
           Ok(res) => {
             // println!("{:?}", res);
@@ -130,7 +127,7 @@ pub fn call_ocl<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
   Ok(atoms::ok().to_term(env))
 }
 
-pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
+pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
   use ocl::{Platform, Device};
   use ocl::enums::{DeviceInfo, DeviceInfoResult};
 
@@ -138,19 +135,28 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
   let platform = Platform::default();
   let device = Device::first(platform).unwrap(); 
   let f64_size :usize = 8;
-  let kernel_vector_dim :usize = 4;
+  let kernel_vector_dim :usize = 1;
+
+  // 並列化の最大次元数 1 -> ベクトル
+  let work_dim : u32 = match device.info(DeviceInfo::MaxWorkItemDimensions){
+    Ok(DeviceInfoResult::MaxWorkItemDimensions(res)) => res,
+    _ => { 
+      println!("failed to get DeviceInfoResult::MaxWorkItemDimensions");
+      1
+    },
+  };
 
   //ワークグループ総数
-  // let max_work_group_size: usize = match device.info(DeviceInfo::MaxWorkGroupSize){
-  //   Ok(DeviceInfoResult::MaxWorkGroupSize(res)) => res,
-  //   _ => { 
-  //     println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
-  //     1
-  //   },
-  // };
+  let max_work_group_size: usize = match device.info(DeviceInfo::MaxWorkGroupSize){
+    Ok(DeviceInfoResult::MaxWorkGroupSize(res)) => res,
+    _ => { 
+      println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
+      1
+    },
+  };
 
-  // Num of Compute Unit(演算ユニット数) ＝ Streaming Multiprocessor(SM) 
-  let num_compute_unit: u32 = match device.info(DeviceInfo::MaxComputeUnits){
+  // f64 of Compute Unit(演算ユニット数) ＝ Streaming Multiprocessor(SM) 
+  let compute_unit_num :u32 = match device.info(DeviceInfo::MaxComputeUnits){
     Ok(DeviceInfoResult::MaxComputeUnits(res)) => res,
     _ => { 
       println!("failed to get DeviceInfoResult::MaxComputeUnits");
@@ -161,7 +167,7 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
   // ローカルメモリ(スクラッチパッドメモリ)の最大容量
   // このサイズを超えたデータをローカルメモリ(__local修飾子)としてカーネルに渡すと
   // エラーが発生する．
-  let max_local_memory_size : u32 = match device.info(DeviceInfo::LocalMemSize){
+  let max_local_memory_size :u32 = match device.info(DeviceInfo::LocalMemSize){
     Ok(DeviceInfoResult::LocalMemSize(res)) => res as u32,
     _ => { 
       println!("failed to get DeviceInfoResult::LocalMemSize");
@@ -169,7 +175,7 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
     },
   };
 
-  // グローバルワークアイテムの総数 ? ワークグループあたりのワークアイテム数？
+  // ワークグループあたりのワークアイテム数？
   let max_work_item_size: Vec<usize> = match device.info(DeviceInfo::MaxWorkItemSizes){
     Ok(DeviceInfoResult::MaxWorkItemSizes(res)) => res,
     _ => { 
@@ -179,33 +185,42 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
   };
 
   // ローカルワークアイテムサイズ
-  // 1つのワークグループにつき処理されるワーク数の理論値
-  let work_item_num = (vec_size as u32 + num_compute_unit-1) / num_compute_unit;
+  // 1つのワークグループにつき処理されるワーク数の最適値
+  let work_item_num = (vec_size as u32 + compute_unit_num-1) / compute_unit_num;
   
+  //let global_work_size = vec_size / kernel_vector_dim work_item;
+  let global_work_size = 256* compute_unit_num;
+  let local_work_size = 256;
+
   // ローカルメモリーサイズ
   let local_memory_size = match max_local_memory_size > (vec_size * f64_size) as u32{
     true => vec_size*f64_size,
     false => max_local_memory_size as usize,
   }; 
 
-  // let num_groups = ;
+  let local_array_size = (local_memory_size + f64_size - 1)/ f64_size;
 
-  println!("num_compute_unit:{:?}", num_compute_unit);
+  println!("input_size:{:?}", vec_size);
+
+  println!("work_dim:{:?}", work_dim);
+  println!("compute_unit_num:{:?}", compute_unit_num);
+  println!("max_work_group_size:{:?}", max_work_group_size);
   println!("max_local_memory_size:{:?}", max_local_memory_size);
   println!("max_work_item_size:{:?}", max_work_item_size);
   println!("work_item_num:{:?}", work_item_num);
+  println!("global_work_size{:?}", global_work_size);
   println!("local_memory_size:{:?}", local_memory_size);
-  println!("vec_size:{:?}", vec_size);
+  println!("local_array_size:{:?}", local_array_size);
   
-  // println!("global_work_item_size:{:?}", global_work_item_size);
-  // println!("..so double4 * {:?} exsits", global_work_item_size);
-  // println!("num_groups:{:?}", num_groups);
+  println!("local_work_size:{:?}", local_work_size);
+  println!("global_work_size:{:?}", global_work_size);
 
   let src = r#"
     __kernel void dot_product4(
       __global double4* x, 
       __global double4* y,
       __global double* output,
+      int array_size,
       __local double4* partial_sums
     ){
       int lid = get_local_id(0);
@@ -238,11 +253,17 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
       __global double* x, 
       __global double* y,
       __global double* output,
+      int array_size,
       __local double* partial_sums
     ){
       int lid = get_local_id(0);
       int gid = get_global_id(0);
       int offset = get_local_size(0);
+
+
+      if(gid >= array_size){
+        return;
+      }
 
       // printf("group_size:%d\n", offset);
       // printf("x*y[%d] = %lf\n", gid, x[gid]*y[gid]);
@@ -269,7 +290,7 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
 
   let pro_que = ProQue::builder()
     .src(src)
-    // .dims(vec_size)
+    .dims(1)
     .build().expect("Build ProQue");
 
   let source_buffer_x = Buffer::builder()
@@ -286,14 +307,12 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
     .copy_host_slice(&y)
     .build()?;
 
-  let output_buffer = Buffer::<Num>::builder()
+  let output_buffer = Buffer::<f64>::builder()
     .queue(pro_que.queue().clone())
     .flags(MemFlags::new().write_only())
     .len(vec_size)
     .fill_val(0f64)
     .build()?;
-
-  // assert_eq!("dot_product1", ["dot_product", &kernel_vector_dim.to_string()].concat());
 
   let kernel : ocl::Kernel = 
     pro_que.kernel_builder(
@@ -301,63 +320,64 @@ pub fn dot_product_ocl(x: &Vec<Num>, y: &Vec<Num>) -> ocl::Result<(Vec<Num>)> {
     .arg(&source_buffer_x) 
     .arg(&source_buffer_y)
     .arg(&output_buffer)
-    .arg_local::<Num>(local_memory_size / 8)
+    .arg(&local_array_size)
+    .arg_local::<f64>(local_array_size)
     .build()?;
 
+  // OpenCL Debug
   // let _res = pro_que.queue().flush();
 
+  let res: ocl::Result<()>;
   unsafe { 
-    kernel.cmd()
+    res = kernel.cmd()
       .queue(pro_que.queue())
       .global_work_offset(kernel.default_global_work_offset())
-      .global_work_size(vec_size / kernel_vector_dim)
+      .global_work_size(global_work_size)
       .local_work_size(kernel.default_local_work_size())
-      // .local_work_size(local_memory_size / 8)
-      .enq()?;
-
-    // match res {
-
-    // }
+      // .local_work_size(local_work_size)
+      .enq();
   }
 
-  //unsafe{ kernel.enq()?; }
 
-  println!("success execute kernel code");
-
-  
-  let mut result = vec![0f64; vec_size
-  ];
-  output_buffer.read(&mut result).enq()?;
-
-  Ok(result)
-  // Ok(atoms::ok().encode(env))
+  match res {
+    Ok(_) => {
+      println!("success execute kernel code");
+      let mut result = vec![0f64; vec_size];
+      output_buffer.read(&mut result).enq()?;
+      Ok(result)
+    },
+    Err(err) => {
+      println!("{:?}", err);
+      Err(err)
+    },
+  }
 }
 
-pub fn sub(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
+pub fn sub(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
   x.iter().zip(y.iter())
   .map(|t| t.0 - t.1)
   .collect()
 }
 
-pub fn sub2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
+pub fn sub2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   x.iter().zip(y.iter())
   .map(|t| sub(&t.0.to_vec(), &t.1.to_vec()))
   .collect()
 }
 
-pub fn emult(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
+pub fn emult(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
   x.iter().zip(y.iter())
   .map(|t| t.0 * t.1)
   .collect()
 }
 
-pub fn emult2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
+pub fn emult2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   x.iter().zip(y.iter())
   .map(|t| emult(&t.0.to_vec(), &t.1.to_vec()))
   .collect()
 }
 
-pub fn transpose(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
+pub fn transpose(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
   let row :usize = x.len();
   let col :usize = x[0].len();
   
@@ -370,7 +390,7 @@ pub fn transpose(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   .collect()
 }
 
-pub fn mult (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
+pub fn mult (x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
   let ty = transpose(y);
 
   x.iter()
@@ -403,21 +423,21 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
           Term,
           Term,
           Term,
-          Num,
+          f64,
           i64
         )>()?; 
         
-        let x: Vec<Vec<Num>> = try!(tuple.0.decode());
-        let y: Vec<Vec<Num>> = try!(tuple.1.decode());
-        let theta: Vec<Vec<Num>> = try!(tuple.2.decode());
-        let alpha: Num = tuple.3;
+        let x: Vec<Vec<f64>> = try!(tuple.0.decode());
+        let y: Vec<Vec<f64>> = try!(tuple.1.decode());
+        let theta: Vec<Vec<f64>> = try!(tuple.2.decode());
+        let alpha: f64 = tuple.3;
         let iterations: i64 = tuple.4;
 
         let tx = transpose(&x);
-        let m = y.len() as Num;
+        let m = y.len() as f64;
         let (row, col) = (theta.len(), theta[0].len());
         let tmp = alpha/m;
-        let a :Vec<Vec<Num>> = vec![vec![tmp; col]; row]; 
+        let a :Vec<Vec<f64>> = vec![vec![tmp; col]; row]; 
 
         let ans = (0..iterations)
           .fold( theta, |theta, _iteration|{
@@ -436,22 +456,22 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 }
 
 fn nif_dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
-  let x: Vec<Num> = args[0].decode()?;
-  let y: Vec<Num> = args[1].decode()?;
+  let x: Vec<f64> = args[0].decode()?;
+  let y: Vec<f64> = args[1].decode()?;
 
   Ok(dot_product(&x, &y).encode(env))
 }
 
 fn nif_sub<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-  let x: Vec<Num> = args[0].decode()?;
-  let y: Vec<Num> = args[1].decode()?;
+  let x: Vec<f64> = args[0].decode()?;
+  let y: Vec<f64> = args[1].decode()?;
   
   Ok(sub(&x, &y).encode(env))
 }
 
 fn nif_emult<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-  let x: Vec<Num> = args[0].decode()?;
-  let y: Vec<Num> = args[1].decode()?;
+  let x: Vec<f64> = args[0].decode()?;
+  let y: Vec<f64> = args[1].decode()?;
   
   Ok(emult(&x, &y).encode(env))
 }
