@@ -1,0 +1,1 @@
+{"rustc":8427573639476503995,"features":"[]","target":9019968916640504442,"profile":14245719688690734572,"path":15713710128546177936,"deps":[["erlang_nif-sys v0.6.4","erlang_nif_sys",1880921975692590118],["lazy_static v1.1.0","lazy_static",11348355252119484406]],"local":[{"Precalculated":"0.18.0"}],"rustflags":[],"edition":"Edition2015"}

@@ -1,0 +1,9 @@
+/home/zackylab/git_repo/linear_regressor_cli/native/linear_regressor_nif/target/debug/deps/futures_channel-090ed86bc98eb045.rmeta: /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/lib.rs /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/lock.rs /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/mpsc/mod.rs /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/mpsc/queue.rs /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/oneshot.rs
+
+/home/zackylab/git_repo/linear_regressor_cli/native/linear_regressor_nif/target/debug/deps/futures_channel-090ed86bc98eb045.d: /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/lib.rs /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/lock.rs /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/mpsc/mod.rs /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/mpsc/queue.rs /home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/oneshot.rs
+
+/home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/lib.rs:
+/home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/lock.rs:
+/home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/mpsc/mod.rs:
+/home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/mpsc/queue.rs:
+/home/zackylab/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-channel-preview-0.2.2/src/oneshot.rs:

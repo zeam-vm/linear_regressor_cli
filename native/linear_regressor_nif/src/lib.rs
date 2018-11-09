@@ -49,38 +49,30 @@ pub fn dot_product(x: &Vec<f64>, y: &Vec<f64>) -> f64 {
 }
 
 pub fn gpuinfo<'a>(env: Env<'a>, _args: &[Term<'a>]) -> NifResult<Term<'a>> {
+  use ocl::enums::{PlatformInfo};
   use ocl::{Platform, Device};
-  use ocl::enums::{PlatformInfo, DeviceInfo, DeviceInfoResult};
 
-  let platform = Platform::default();
-  let device = Device::first(platform).unwrap();
+  let platforms = Platform::list();
 
-  println!("PlatformList{:?}", Platform::list());
-  println!("Profile:{:?}", platform.info(PlatformInfo::Profile));  
-  println!("Version:{:?}", platform.info(PlatformInfo::Version));
-  println!("Name:{:?}", platform.info(PlatformInfo::Name));
-  println!("Vendor:{:?}", platform.info(PlatformInfo::Vendor));
-  // println!("Extensions:{:?}", platform.info(ocl::enums::PlatformInfo::Extensions));
-  println!("Device Name:{:?}", device.name());
-  println!("Device Vendor:{:?}", device.vendor());
+  println!("platform num:{:?}", platforms.len());
 
-  // let max_local_size = match device.info(MaxWorkGroupSize){ 
-  //   //OclResult<DeviceInfoResult>
-  //   Ok(res) => res,
-  //   Err(err) => err
-  // };
+  for p_idx in 0..platforms.len() {
+  	let platform = &platforms[p_idx];
+  	let devices = Device::list_all(platform).unwrap();
 
-  let max_local_size: usize = match device.info(DeviceInfo::MaxWorkGroupSize){
-    Ok(DeviceInfoResult::MaxWorkGroupSize(res)) => res,
-    _ => { 
-      println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
-      0
-    },
-  };
+	if devices.is_empty() { continue; }	
 
-  // assert_eq!(max_local_size, 1024);
-  println!("max_local_size:{:?}", max_local_size);
-  
+	println!("Profile:{:?}", platform.info(PlatformInfo::Profile));  
+	println!("Version:{:?}", platform.info(PlatformInfo::Version));
+	println!("Name:{:?}", platform.info(PlatformInfo::Name));
+	println!("Vendor:{:?}", platform.info(PlatformInfo::Vendor));
+	
+	for device in devices.iter() {
+		  println!("Device Name:{:?}", device.name());
+			println!("Device Vendor:{:?}", device.vendor());	
+    }
+  }
+
   Ok(atoms::ok().to_term(env))
 }
 
@@ -188,9 +180,11 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
   // 1つのワークグループにつき処理されるワーク数の最適値
   let work_item_num = (vec_size as u32 + compute_unit_num-1) / compute_unit_num;
   
-  //let global_work_size = vec_size / kernel_vector_dim work_item;
-  let global_work_size = 256* compute_unit_num;
-  let local_work_size = 256;
+  // let global_work_size = vec_size / kernel_vector_dim;
+  let global_work_size = (work_item_num * compute_unit_num) as usize;
+  let local_work_size = work_item_num as usize;
+
+  assert_eq!(global_work_size % local_work_size, 0);
 
   // ローカルメモリーサイズ
   let local_memory_size = match max_local_memory_size > (vec_size * f64_size) as u32{
@@ -198,17 +192,17 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     false => max_local_memory_size as usize,
   }; 
 
-  let local_array_size = (local_memory_size + f64_size - 1)/ f64_size;
+  let local_array_size  = (local_memory_size + f64_size - 1)/ f64_size;
 
   println!("input_size:{:?}", vec_size);
 
-  println!("work_dim:{:?}", work_dim);
-  println!("compute_unit_num:{:?}", compute_unit_num);
+  println!("work_dim:	{:?}", work_dim);
+  println!("compute_unit_num:	{:?}", compute_unit_num);
   println!("max_work_group_size:{:?}", max_work_group_size);
   println!("max_local_memory_size:{:?}", max_local_memory_size);
   println!("max_work_item_size:{:?}", max_work_item_size);
   println!("work_item_num:{:?}", work_item_num);
-  println!("global_work_size{:?}", global_work_size);
+  println!("global_work_size:{:?}", global_work_size);
   println!("local_memory_size:{:?}", local_memory_size);
   println!("local_array_size:{:?}", local_array_size);
   
@@ -259,7 +253,6 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
       int lid = get_local_id(0);
       int gid = get_global_id(0);
       int offset = get_local_size(0);
-
 
       if(gid >= array_size){
         return;
@@ -317,11 +310,11 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
   let kernel : ocl::Kernel = 
     pro_que.kernel_builder(
       ["dot_product", &kernel_vector_dim.to_string()].concat())
-    .arg(&source_buffer_x) 
-    .arg(&source_buffer_y)
-    .arg(&output_buffer)
-    .arg(&local_array_size)
-    .arg_local::<f64>(local_array_size)
+    .arg(&source_buffer_x) // immutable
+    .arg(&source_buffer_y) // immutable
+    .arg(&output_buffer) // immutable
+    .arg(&vec_size) // immutable
+    .arg_local::<f64>(local_work_size as usize)
     .build()?;
 
   // OpenCL Debug
@@ -333,11 +326,12 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
       .queue(pro_que.queue())
       .global_work_offset(kernel.default_global_work_offset())
       .global_work_size(global_work_size)
-      .local_work_size(kernel.default_local_work_size())
-      // .local_work_size(local_work_size)
+      // .local_work_size(kernel.default_local_work_size())
+      .local_work_size(local_work_size)
       .enq();
   }
 
+  println!("execute kernel.enq!()");
 
   match res {
     Ok(_) => {
