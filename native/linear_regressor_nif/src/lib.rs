@@ -509,24 +509,8 @@ pub fn dot_array_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
 }
 
 pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
-  use ocl::{Platform, Device};
+  use ocl::{flags, Platform, Device, Context, Queue, Program,Buffer, Kernel};
   use ocl::enums::{DeviceInfo, DeviceInfoResult};
-
-  let vec_size = x.len();
-  let platform = Platform::default();
-  let device = Device::first(platform).unwrap(); 
-
-  // ワークグループあたりのワークアイテム数？
-  let max_work_item_sizes: Vec<usize> = match device.info(DeviceInfo::MaxWorkItemSizes){
-    Ok(DeviceInfoResult::MaxWorkItemSizes(res)) => res,
-    _ => { 
-      println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
-      vec![1; 3]
-    },
-  };
-
-  println!("input_size:{:?}", vec_size);
-  println!("max_work_item_sizes:{:?}", max_work_item_sizes);
 
   let src = r#"
     __kernel void reduction(
@@ -556,13 +540,37 @@ pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     }
   "#;
 
-  let pro_que = ProQue::builder()
+  let vec_size = x.len();
+  let platform = Platform::default(); //OSの情報とか
+  let device = Device::by_idx_wrap(platform, 0).unwrap();
+
+  println!("Device Name:{:?}", device.name());
+  println!("Device Vendor:{:?}", device.vendor());
+
+  let context = Context::builder()
+    .platform(platform)
+    .devices(device.clone())
+    .build()?;
+  let program = Program::builder()
+    .devices(device)
     .src(src)
-    .dims(1)
-    .build().expect("Build ProQue");
+    .build(&context)?;
+  let queue = Queue::new(&context, device, None)?;
+
+  // ワークグループあたりのワークアイテム数？
+  let max_work_item_sizes: Vec<usize> = match device.info(DeviceInfo::MaxWorkItemSizes){
+    Ok(DeviceInfoResult::MaxWorkItemSizes(res)) => res,
+    _ => { 
+      println!("failed to get DeviceInfoResult::MaxWorkGroupSize");
+      vec![1; 3]
+    },
+  };
+
+  println!("input_size:{:?}", vec_size);
+  println!("max_work_item_sizes:{:?}", max_work_item_sizes);
 
   let source_buffer_x = Buffer::builder()
-    .queue(pro_que.queue().clone())
+    .queue(queue.clone())
     .flags(MemFlags::new().read_write())
     .len(vec_size)
     .copy_host_slice(&x)
@@ -574,15 +582,18 @@ pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
   println!("work_group_num:{:?}", work_group_num);
 
   let output_buffer = Buffer::<f64>::builder()
-    .queue(pro_que.queue().clone())
+    .queue(queue.clone())
     .flags(MemFlags::new().write_only())
     .len(work_group_num)
     .fill_val(0f64)
     .build()?;
 
 
-  let kernel : ocl::Kernel = 
-    pro_que.kernel_builder("reduction")
+  let kernel : ocl::Kernel = Kernel::builder()
+    .program(&program)
+    .name("reduction")
+    .queue(queue.clone())
+    .global_work_size(vec_size)
     .arg(&source_buffer_x) 
     .arg(&output_buffer)
     .arg_local::<f64>(work_group_size)
@@ -591,7 +602,7 @@ pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
   let res: ocl::Result<()>;
   unsafe { 
     res = kernel.cmd()
-      .queue(pro_que.queue())
+      .queue(&queue)
       .global_work_offset(kernel.default_global_work_offset())
       .global_work_size(vec_size)
       .local_work_size(work_group_size)
