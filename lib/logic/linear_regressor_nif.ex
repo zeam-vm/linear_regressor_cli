@@ -69,8 +69,9 @@ defmodule LinearRegressorNif do
       a |> to_float,
       b |> to_float
     )
+
     receive do
-      l -> l 
+      l -> l
     end
   end
 
@@ -111,7 +112,7 @@ defmodule LinearRegressorNif do
     )
 
     receive do
-      l -> l 
+      l -> l
     end
   end
 
@@ -139,15 +140,17 @@ defmodule LinearRegressorNif do
   end
 
   def test_rust_dp do
-    m = List.duplicate(1, @index |> Kernel.trunc)
+    m = List.duplicate(1, @index |> Kernel.trunc())
+
     dot_product(m, m)
-    |>IO.puts
+    |> IO.puts()
   end
 
   def test_ocl_dp do
-    m = List.duplicate(1, @index |> Kernel.trunc)
+    m = List.duplicate(1, @index |> Kernel.trunc())
+
     ocl_dp(m, m)
-    |>IO.puts
+    |> IO.puts()
   end
 
   def benchmark_rust_dot() do
@@ -200,5 +203,3 @@ defmodule LinearRegressorNif do
     |> IO.puts
   end
 end
-
-
