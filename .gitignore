@@ -27,3 +27,5 @@ priv/
 
 # Ignore Cargo.lock
 Cargo.lock
+
+/native/linear_regressor_nif/target/

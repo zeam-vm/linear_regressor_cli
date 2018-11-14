@@ -274,20 +274,6 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
   // 1つのワークグループにつき処理されるワーク数の最適値
   let work_item_num = (vec_size as u32 + compute_unit_num-1) / compute_unit_num;
   
-<<<<<<< HEAD
-
-  //let global_work_size = vec_size / kernel_vector_dim work_item;
-  // let global_work_size = 1024;
-  // let local_work_size = 128;
-  // let group_size = 8;
-=======
-  // let global_work_size = vec_size / kernel_vector_dim;
-  let global_work_size = (work_item_num * compute_unit_num) as usize;
-  let local_work_size = work_item_num as usize;
-
-  assert_eq!(global_work_size % local_work_size, 0);
->>>>>>> opencl2
-
   // ローカルメモリーサイズ
   let local_memory_size = match max_local_memory_size > (vec_size * f64_size) as u32{
     true => vec_size*f64_size,
@@ -304,11 +290,6 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
   println!("max_local_memory_size:{:?}", max_local_memory_size);
   println!("max_work_item_size:{:?}", max_work_item_size);
   println!("work_item_num:{:?}", work_item_num);
-<<<<<<< HEAD
-  // println!("global_work_size{:?}", global_work_size);
-=======
-  println!("global_work_size:{:?}", global_work_size);
->>>>>>> opencl2
   println!("local_memory_size:{:?}", local_memory_size);
   println!("local_array_size:{:?}", local_array_size);
   
@@ -379,7 +360,7 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     // }
   "#;
 
-<<<<<<< HEAD
+
   let pro_que = ProQue::builder()
     .src(src)
     .dims(1)
@@ -391,11 +372,6 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     .len(vec_size)
     .copy_host_slice(&x)
     .build()?;
-=======
-      if(gid >= array_size){
-        return;
-      }
->>>>>>> opencl2
 
   let source_buffer_y = Buffer::builder()
     .queue(pro_que.queue().clone())
@@ -501,21 +477,11 @@ pub fn dot_array_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     .build()?;
 
   let kernel : ocl::Kernel = 
-<<<<<<< HEAD
     pro_que.kernel_builder("dot_array")
     .arg(&source_buffer_x) 
     .arg(&source_buffer_y)
     .arg(&output_buffer)
     .arg(&vec_size)
-=======
-    pro_que.kernel_builder(
-      ["dot_product", &kernel_vector_dim.to_string()].concat())
-    .arg(&source_buffer_x) // immutable
-    .arg(&source_buffer_y) // immutable
-    .arg(&output_buffer) // immutable
-    .arg(&vec_size) // immutable
-    .arg_local::<f64>(local_work_size as usize)
->>>>>>> opencl2
     .build()?;
 
   let res: ocl::Result<()>;
@@ -523,22 +489,11 @@ pub fn dot_array_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     res = kernel.cmd()
       .queue(pro_que.queue())
       .global_work_offset(kernel.default_global_work_offset())
-<<<<<<< HEAD
       .global_work_size(vec_size)
       .local_work_size(4)
       .enq();
   }
 
-=======
-      .global_work_size(global_work_size)
-      // .local_work_size(kernel.default_local_work_size())
-      .local_work_size(local_work_size)
-      .enq();
-  }
-
-  println!("execute kernel.enq!()");
-
->>>>>>> opencl2
   match res {
     Ok(_) => {
       println!("success execute kernel code");
