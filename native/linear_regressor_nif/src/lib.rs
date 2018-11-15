@@ -223,40 +223,37 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     __kernel void dot_product(
       __global double* x, 
       __global double* y,
-      __global double* partial_sums,
-      const int private_size
+      __global double* partial_sums
     ){
       const int LOCAL_ID = get_local_id(0);
       const int GROUP_SIZE = get_local_size(0);
       const int GROUP_ID = get_group_id(0);
+      const size_t PRIVATE_SIZE = 4;
 
       // Copy to private memory
-      double private_memory[ private_size ];
-      for(size_t i = 0; i < private_size; ++i){
-      	private_memory[i] = x[GROUP_ID + LOCAL_ID + i] * y[GROUP_ID + LOCAL_ID + i];
+      double tmp[4];
+
+      for(size_t i = 0; i < PRIVATE_SIZE; ++i){
+      	tmp[i] = x[GROUP_ID + LOCAL_ID + i] * y[GROUP_ID + LOCAL_ID + i];
       }	
 
       // Sync
       barrier(CLK_LOCAL_MEM_FENCE);
-			
-			for(size_t i = 0; i < private_size; ++i){
-      	printf("primem[%d]: %d\n", i, private_memory[i]);
-      }      
       
       // Calculate inner product
-      double tmp = 0.0;
-      for(size_t i = 0; i < private_size; ++i){
-      	tmp += private_memory[i];
+      double tmp1 = 0.0;
+      for(size_t i = 0; i < PRIVATE_SIZE; ++i){
+      	tmp1 += tmp[i];
       }
 
-      partial_sums[ GROUP_ID ] = tmp;
+      partial_sums[ GROUP_ID ] = tmp1;
     }
   "#;
 
   let vec_size = x.len();
   let f64_size = 8;
   let platform = Platform::default(); //OSの情報とか
-  let device = Device::by_idx_wrap(platform, 1).unwrap();
+  let device = Device::by_idx_wrap(platform, 0).unwrap();
 
   println!("Device Name:{:?}", device.name());
   println!("Device Vendor:{:?}", device.vendor());
@@ -268,7 +265,7 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
   let program = Program::builder()
     .devices(device)
     .src(src)
-    .build(&context)?;
+    .build(&context).unwrap();
   let queue = Queue::new(&context, device, None)?;
 
   // 並列化の最大次元数 1 -> ベクトル
@@ -343,14 +340,14 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
 
   let source_buffer_x = Buffer::builder()
     .queue(queue.clone())
-    .flags(MemFlags::new().read_write())
+    .flags(MemFlags::new().read_only())
     .len(vec_size)
     .copy_host_slice(&x)
     .build()?;
 
   let source_buffer_y = Buffer::builder()
 		.queue(queue.clone())
-    .flags(MemFlags::new().read_write())
+    .flags(MemFlags::new().read_only())
     .len(vec_size)
     .copy_host_slice(&y)
     .build()?;
@@ -365,7 +362,6 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     .queue(queue.clone())
     .flags(MemFlags::new().write_only())
     .len(work_group_num)
-    .fill_val(0f64)
     .build()?;
 
   let kernel : ocl::Kernel = Kernel::builder()
@@ -375,8 +371,8 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     .arg(&source_buffer_x) 
     .arg(&source_buffer_y)
     .arg(&output_buffer)
-    .arg(&private_size)
-    .build()?;
+    // .arg(&private_size)
+    .build().unwrap();
 
   let res: ocl::Result<()>;
   unsafe { 

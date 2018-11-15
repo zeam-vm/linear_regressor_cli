@@ -1,8 +1,9 @@
 defmodule LinearRegressorNif do
   use Rustler, otp_app: :linear_regressor_cli, crate: :linear_regressor_nif
 
-  @index 8
+  # @index 8
 
+  @index 1.024e8
   @doc """
   ## Examples
 
@@ -31,8 +32,9 @@ defmodule LinearRegressorNif do
       a |> to_float,
       b |> to_float
     )
+
     receive do
-      l -> l 
+      l -> l
     end
   end
 
@@ -45,8 +47,9 @@ defmodule LinearRegressorNif do
   end
 
   def norum(a)
-    when is_list(a) do
+      when is_list(a) do
     _norum(a |> to_float)
+
     receive do
       l -> l
     end
@@ -58,8 +61,9 @@ defmodule LinearRegressorNif do
       a |> to_float,
       b |> to_float
     )
+
     receive do
-      l -> l 
+      l -> l
     end
   end
 
@@ -77,11 +81,10 @@ defmodule LinearRegressorNif do
 
   def ocl_nrm(a)
       when is_list(a) do
-    _call_ocl_nrm(
-      a |> to_float
-    )
+    _call_ocl_nrm(a |> to_float)
+
     receive do
-      l -> l 
+      l -> l
     end
   end
 
@@ -157,23 +160,23 @@ defmodule LinearRegressorNif do
     :timer.tc(fn -> test_rust_dot() end)
     |> elem(0)
     |> Kernel./(1_000_000)
-    |> IO.puts
+    |> IO.puts()
   end
 
   def benchmark_ocl_dot do
     :timer.tc(fn -> test_ocl_dot() end)
     |> elem(0)
     |> Kernel./(1_000_000)
-    |> IO.puts
+    |> IO.puts()
   end
 
   def test_rust_dot do
-    m = List.duplicate(1, @index |> Kernel.trunc)
+    m = List.duplicate(1, @index |> Kernel.trunc())
     dot_array(m, m)
   end
 
   def test_ocl_dot do
-    m = List.duplicate(1, @index |> Kernel.trunc)
+    m = List.duplicate(1, @index |> Kernel.trunc())
     ocl_dot(m, m)
   end
 
@@ -181,25 +184,27 @@ defmodule LinearRegressorNif do
     :timer.tc(fn -> test_rust_reduction() end)
     |> elem(0)
     |> Kernel./(1_000_000)
-    |> IO.puts
+    |> IO.puts()
   end
 
   def test_rust_reduction do
-    m = List.duplicate(1, @index |> Kernel.trunc)
+    m = List.duplicate(1, @index |> Kernel.trunc())
+
     norum(m)
-    |> IO.puts
+    |> IO.puts()
   end
 
   def benchmark_ocl_reduction do
     :timer.tc(fn -> test_ocl_reduction() end)
     |> elem(0)
     |> Kernel./(1_000_000)
-    |> IO.puts
+    |> IO.puts()
   end
 
   def test_ocl_reduction do
-    m = List.duplicate(1, @index |> Kernel.trunc)
+    m = List.duplicate(1, @index |> Kernel.trunc())
+
     ocl_nrm(m)
-    |> IO.puts
+    |> IO.puts()
   end
 end
