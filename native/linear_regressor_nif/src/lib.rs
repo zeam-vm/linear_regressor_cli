@@ -54,7 +54,6 @@ pub fn dot_product(x: &Vec<f64>, y: &Vec<f64>) -> f64 {
 
 pub fn norum(x: &Vec<f64>) -> f64 {
   x.iter()
-  .map(|t| t*t)
   .fold(0.0, |sum, i| sum + i)
 }
 
@@ -116,10 +115,10 @@ pub fn call_ocl_dp<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
         let x: Vec<f64> = try!(tuple.0.decode());
         let y: Vec<f64> = try!(tuple.1.decode());
 
-        let result: ocl::Result<(Vec<f64>)> = dot_array_ocl(&x, &y);
+        let result: ocl::Result<(Vec<f64>)> = dot_product_ocl(&x, &y);
         match result {
           Ok(res) => {
-            Ok(res.encode(env))
+          	Ok(res.iter().fold(0.0, |sum, i| sum + i).encode(env))
           },
           Err(_) =>  Err(Error::BadArg),
         }
@@ -199,7 +198,9 @@ pub fn call_ocl_nrm<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> 
         let result: ocl::Result<(Vec<f64>)> = norum_ocl(&x);
         match result {
           Ok(res) => {
-
+          	println!("{:?}", res.len());
+          	// println!("{:?}", res);
+          	println!();
             Ok(norum(&res).encode(env))
           },
           Err(_) =>  Err(Error::BadArg),
@@ -215,13 +216,60 @@ pub fn call_ocl_nrm<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> 
 }
 
 pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
-  use ocl::{Platform, Device};
+  use ocl::{Platform, Device, Context, Queue, Program,Buffer, Kernel};
   use ocl::enums::{DeviceInfo, DeviceInfoResult};
 
+  let src = r#"
+    __kernel void dot_product(
+      __global double* x, 
+      __global double* y,
+      __global double* partial_sums,
+      const int private_size
+    ){
+      const int LOCAL_ID = get_local_id(0);
+      const int GROUP_SIZE = get_local_size(0);
+      const int GROUP_ID = get_group_id(0);
+
+      // Copy to private memory
+      double private_memory[ private_size ];
+      for(size_t i = 0; i < private_size; ++i){
+      	private_memory[i] = x[GROUP_ID + LOCAL_ID + i] * y[GROUP_ID + LOCAL_ID + i];
+      }	
+
+      // Sync
+      barrier(CLK_LOCAL_MEM_FENCE);
+			
+			for(size_t i = 0; i < private_size; ++i){
+      	printf("primem[%d]: %d\n", i, private_memory[i]);
+      }      
+      
+      // Calculate inner product
+      double tmp = 0.0;
+      for(size_t i = 0; i < private_size; ++i){
+      	tmp += private_memory[i];
+      }
+
+      partial_sums[ GROUP_ID ] = tmp;
+    }
+  "#;
+
   let vec_size = x.len();
-  let platform = Platform::default();
-  let device = Device::first(platform).unwrap(); 
-  let f64_size :usize = 8;
+  let f64_size = 8;
+  let platform = Platform::default(); //OSの情報とか
+  let device = Device::by_idx_wrap(platform, 1).unwrap();
+
+  println!("Device Name:{:?}", device.name());
+  println!("Device Vendor:{:?}", device.vendor());
+
+  let context = Context::builder()
+    .platform(platform)
+    .devices(device.clone())
+    .build()?;
+  let program = Program::builder()
+    .devices(device)
+    .src(src)
+    .build(&context)?;
+  let queue = Queue::new(&context, device, None)?;
 
   // 並列化の最大次元数 1 -> ベクトル
   let work_dim : u32 = match device.info(DeviceInfo::MaxWorkItemDimensions){
@@ -292,133 +340,63 @@ pub fn dot_product_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
   println!("work_item_num:{:?}", work_item_num);
   println!("local_memory_size:{:?}", local_memory_size);
   println!("local_array_size:{:?}", local_array_size);
-  
-  // println!("local_work_size:{:?}", local_work_size);
-  // println!("global_work_size:{:?}", global_work_size);
-
-  let src = r#"
-    __kernel void dot_product4(
-      __global double4* x, 
-      __global double4* y,
-      __global double* output,
-      int array_size,
-      __local double4* partial_sums
-    ){
-      int lid = get_local_id(0);
-      int gid = get_global_id(0);
-      int offset = get_local_size(0);
-
-      // printf("group_size:%d\n", offset);
-      // printf("x*y[%d] = %lf\n", gid, x[gid]*y[gid]);
-
-      partial_sums[lid] = x[gid] * y[gid];
-
-      // printf("partial_sums[%d]= %lf\n", lid, partial_sums[lid]);
-
-      for(int i = offset >> 1; i > 0; i >>= 1) {
-          barrier(CLK_LOCAL_MEM_FENCE);
-
-          if(lid < i) {
-              partial_sums[lid] += partial_sums[lid + i];
-          }
-      }
-
-      // printf("group_id[%d]\n", get_group_id(0));
-
-      if(lid == 0) {
-        output[get_group_id(0)] = dot(partial_sums[0], (double4)1.0);
-      }
-    }
-
-    // __kernel void reduction(
-    //   __global double* vec,
-    //   __local double* out, 
-    //   double* partial_sums
-    // ){
-    //   partial_sums[lid] = x[gid] * y[gid];
-
-    //   for(int i = offset >> 1; i > 0; i >>= 1) {
-    //       barrier(CLK_LOCAL_MEM_FENCE);
-
-    //       if(lid < i) {
-    //           partial_sums[lid] += partial_sums[lid + i];
-    //       }
-    //   }
-
-    //   // if(lid == 0) {
-    //   //   output[get_group_id(0)] = partial_sums[0];
-    //   // }
-    // }
-
-    // __kernel void dot_product1(
-    //   __global double* x, 
-    //   __global double* y,
-    //   __global double* output,
-    //   __local double* partial_sums
-    // ){
-    //   dot(x, y, output);
-    // }
-  "#;
-
-
-  let pro_que = ProQue::builder()
-    .src(src)
-    .dims(1)
-    .build().expect("Build ProQue");
 
   let source_buffer_x = Buffer::builder()
-    .queue(pro_que.queue().clone())
+    .queue(queue.clone())
     .flags(MemFlags::new().read_write())
     .len(vec_size)
     .copy_host_slice(&x)
     .build()?;
 
   let source_buffer_y = Buffer::builder()
-    .queue(pro_que.queue().clone())
+		.queue(queue.clone())
     .flags(MemFlags::new().read_write())
     .len(vec_size)
     .copy_host_slice(&y)
     .build()?;
 
+  let work_group_size = 1;
+  let private_size = 4;
+  let work_group_num = vec_size / private_size;
+  println!("work_group_size:{:?}", work_group_size);
+  println!("work_group_num:{:?}", work_group_num);
+
   let output_buffer = Buffer::<f64>::builder()
-    .queue(pro_que.queue().clone())
+    .queue(queue.clone())
     .flags(MemFlags::new().write_only())
-    .len(vec_size)
+    .len(work_group_num)
     .fill_val(0f64)
     .build()?;
 
-  let kernel : ocl::Kernel = 
-    pro_que.kernel_builder(
-      //["dot_product", &kernel_vector_dim.to_string()].concat()
-      "dot_array"
-      )
+  let kernel : ocl::Kernel = Kernel::builder()
+    .program(&program)
+    .name("dot_product")
+    .queue(queue.clone())
     .arg(&source_buffer_x) 
     .arg(&source_buffer_y)
     .arg(&output_buffer)
-    .arg(&vec_size)
-    // .arg_local::<f64>(1024)
+    .arg(&private_size)
     .build()?;
-
-  // OpenCL Debug
-  // let _res = pro_que.queue().flush();
 
   let res: ocl::Result<()>;
   unsafe { 
-    res = kernel.cmd()
-      .queue(pro_que.queue())
+     res = kernel.cmd()
+      .queue(&queue)
       .global_work_offset(kernel.default_global_work_offset())
-      .global_work_size(vec_size)
-      .local_work_size(4)
+      .global_work_size(work_group_num)
+      .local_work_size(work_group_size)
       .enq();
   }
-
-  // let group_size = vec_size / 4;
 
   match res {
     Ok(_) => {
       println!("success execute kernel code");
-      let mut result = vec![0f64; vec_size];
-      output_buffer.read(&mut result).enq()?;
+      let mut result = vec![0f64; work_group_num];
+      output_buffer.cmd()
+      	.queue(&queue)
+      	.offset(0)
+      	.read(&mut result)
+      	.enq()?;
       Ok(result)
     },
     Err(err) => {
@@ -509,7 +487,7 @@ pub fn dot_array_ocl(x: &Vec<f64>, y: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
 }
 
 pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
-  use ocl::{flags, Platform, Device, Context, Queue, Program,Buffer, Kernel};
+  use ocl::{Platform, Device, Context, Queue, Program,Buffer, Kernel};
   use ocl::enums::{DeviceInfo, DeviceInfoResult};
 
   let src = r#"
@@ -521,9 +499,19 @@ pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
       uint lid = get_local_id(0);
       uint group_size = get_local_size(0);
       
+      // printf("get_work_dim:%d\n", get_work_dim());
+      // printf("get_num_groups:%d\n", get_num_groups(0));
+      // printf("get_global_id:%d\n", get_global_id(1));
+      // printf("get_local_size:%d\n", group_size);
+
       local_sums[lid] = vec[get_global_id(0)];
+      barrier(CLK_LOCAL_MEM_FENCE);
+
+      // printf("vec[%d]:%d\n", get_global_id(0), vec[get_global_id(0)]);
+      printf("local_sums[%d]:%d\n", lid, local_sums[lid]);
 
       // Loop for computing localSums : divide WorkGroup into 2 parts
+      double tmp = 0;
       for (uint stride = group_size/2; stride > 0; stride /=2)
       {
         // Waiting for each 2x2 addition into given workgroup
@@ -571,7 +559,7 @@ pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
 
   let source_buffer_x = Buffer::builder()
     .queue(queue.clone())
-    .flags(MemFlags::new().read_write())
+    .flags(MemFlags::new().read_only())
     .len(vec_size)
     .copy_host_slice(&x)
     .build()?;
@@ -583,11 +571,10 @@ pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
 
   let output_buffer = Buffer::<f64>::builder()
     .queue(queue.clone())
-    .flags(MemFlags::new().write_only())
+    .flags(MemFlags::new().read_write())
     .len(work_group_num)
     .fill_val(0f64)
     .build()?;
-
 
   let kernel : ocl::Kernel = Kernel::builder()
     .program(&program)
@@ -605,6 +592,7 @@ pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
       .queue(&queue)
       .global_work_offset(kernel.default_global_work_offset())
       .global_work_size(vec_size)
+      // .local_work_size(kernel.default_local_work_size())
       .local_work_size(work_group_size)
       .enq();
   }
@@ -613,7 +601,12 @@ pub fn norum_ocl(x: &Vec<f64>) -> ocl::Result<(Vec<f64>)> {
     Ok(_) => {
       println!("success execute kernel code");
       let mut result = vec![0f64; work_group_num];
-      output_buffer.read(&mut result).enq()?;
+      output_buffer.cmd()
+      	.queue(&queue)
+      	.offset(0)
+      	.read(&mut result)
+      	.enq()?;
+
       Ok(result)
     },
     Err(err) => {
