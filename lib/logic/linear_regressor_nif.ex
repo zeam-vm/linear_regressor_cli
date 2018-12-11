@@ -33,13 +33,6 @@ defmodule LinearRegressorNif do
   def to_float(any), do: any
   
   def fit( x, y, theta, alpha, iterations ) do
-    # _fit(
-    #   x |> to_float, 
-    #   y |> to_float, 
-    #   theta |> to_float, 
-    #   alpha |> to_float,
-    #   iterations)
-
     _fit(
       x , 
       y , 
@@ -50,32 +43,4 @@ defmodule LinearRegressorNif do
       l -> l
     end
   end
-
-  # def fit_with_nif( x, y, theta, alpha, iterations ) do
-  #   m = length( y )
-  #   tx = Matrix.transpose( x )
-  #   size = Matrix.size( theta )
-  #   a = Matrix.new( elem( size, 0 ), elem( size, 1 ), alpha * ( 1 / m ) )
-
-  #   0..iterations
-  #     |> Enum.to_list
-  #     |> Enum.reduce( theta, fn( _iteration, theta ) ->
-  #       trans_theta = Matrix.transpose( theta )
-  #       d = Enum.map(x, fn(row)->
-  #         Enum.map(trans_theta, &dot_product(row, &1)) end)
-  #       d = Enum.zip(d, y)
-  #        |> Enum.map(fn({a,b})->sub(a,b)end)
-
-  #       d = Matrix.transpose( d )
-  #       d = Enum.map(d, fn(row) ->
-  #           Enum.map(tx, &dot_product(row, &1))
-  #       end)
-  #       d = Matrix.transpose( d )
-  #       d = Enum.zip(d, a)
-  #         |> Enum.map( fn({a, b})->emult(a,b) end)
-  #       Enum.zip(theta, d)
-  #       |> Enum.map( fn({a,b})->sub(a,b) end)
-  #     end)
-  #   end
-  # # end
 end
