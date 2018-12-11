@@ -116,9 +116,9 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
           Num,
           i64)>()?; 
         
-        let x: Vec<Vec<Num>> = try!(tuple.0.decode());
-        let y: Vec<Vec<Num>> = try!(tuple.1.decode());
-        let theta: Vec<Vec<Num>> = try!(tuple.2.decode());
+        let x: Vec<Vec<Num>> = tuple.0.decode()?;
+        let y: Vec<Vec<Num>> = tuple.1.decode()?;
+        let theta: Vec<Vec<Num>> = tuple.2.decode()?;
         let alpha: Num = tuple.3;
         let iterations: i64 = tuple.4;
 
@@ -173,8 +173,8 @@ fn new(first: i64, end: i64) -> Vec<i64> {
 }
 
 fn nif_new<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-  let first: i64 = try!(args[0].decode());
-  let end: i64 = try!(args[1].decode());
+  let first: i64 = args[0].decode()?;
+  let end: i64 = args[1].decode()?;
 
   Ok(new(first, end).encode(env))
 }
