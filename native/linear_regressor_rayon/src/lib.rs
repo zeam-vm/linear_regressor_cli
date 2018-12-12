@@ -1,15 +1,29 @@
 #[macro_use] extern crate rustler;
 // #[macro_use] extern crate rustler_codegen;
 #[macro_use] extern crate lazy_static;
+
 extern crate rayon;
+
+use rayon::iter::{ParallelIterator};
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::IndexedParallelIterator;
+// use rayon::prelude::*;
+
 
 use rustler::{Env, Term, NifResult, Encoder};
 use rustler::env::{OwnedEnv, SavedTerm};
+// use rustler::types::atom::Atom;
+// use rustler::types::list::ListIterator;
+// use rustler::types::map::MapIterator;
 
 use rustler::types::tuple::make_tuple;
-use rayon::prelude::*;
+// use std::ops::Range;
+// use std::ops::RangeInclusive;
 
+// use ndarray::arr2;
 
+// type NifResult<T> = Result<T, Error>;
 type Num = f64;
 
 mod atoms {
@@ -21,8 +35,9 @@ mod atoms {
   }
 }
 
+
 rustler_export_nifs! {
-  "Elixir.LinearRegressorNif",
+  "Elixir.LinearRegressorRayon",
   [
     //("Elixir's func, number of arguments, Rust's func)
     ("_dot_product", 2, nif_dot_product),
@@ -31,67 +46,9 @@ rustler_export_nifs! {
     ("_sub", 2, nif_sub),
     ("_emult", 2, nif_emult),
     ("_fit", 5, nif_fit),
-    ("_rayon_fit", 5, rayon_fit), 
   ],
   None
 }
-
-pub fn dot_product(x: &Vec<Num>, y: &Vec<Num>) -> Num {
-  x.iter().zip(y.iter())
-  .map(|t| t.0 * t.1)
-  .fold(0.0, |sum, i| sum + i)
-}
-
-pub fn sub(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
-  x.iter().zip(y.iter())
-  .map(|t| t.0 - t.1)
-  .collect()
-}
-
-pub fn sub2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
-  x.iter().zip(y.iter())
-  .map(|t| sub(&t.0.to_vec(), &t.1.to_vec()))
-  .collect()
-}
-
-pub fn emult(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
-  x.iter().zip(y.iter())
-  .map(|t| t.0 * t.1)
-  .collect()
-}
-
-pub fn emult2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
-  x.iter().zip(y.iter())
-  .map(|t| emult(&t.0.to_vec(), &t.1.to_vec()))
-  .collect()
-}
-
-pub fn transpose(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
-  let row :usize = x.len();
-  let col :usize = x[0].len();
-  
-  (0..col)
-  .map(|c| {
-    (0..row)
-    .map( |r| x[r][c] )
-    .collect()
-  })
-  .collect()
-}
-
-pub fn mult (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
-  let ty = transpose(y);
-
-  x.iter()
-  .map(|i| {
-    ty.iter()
-    .map(|j| dot_product(&i.to_vec(), &j.to_vec()))
-    .collect()
-  })
-  .collect()
-}
-
-/*********************************************************************/
 
 pub fn dot_product_par(x: &Vec<Num>, y: &Vec<Num>) -> Num {
   x.par_iter().zip(y.par_iter())
@@ -167,9 +124,19 @@ pub fn transpose_par(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
     .collect()
   })
   .collect()
+
+  // (0..col)
+  // .map(|c| {
+  //   (0..row)
+  //   .map( |r| x[r][c] )
+  //   .collect()
+  // })
+  // .collect()
 }
 
 pub fn transpose_s(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
+  //swap_rows_cols(x)
+
   let row :usize = x.len();
   let col :usize = x[0].len();
 
@@ -181,6 +148,14 @@ pub fn transpose_s(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
     .collect()
   })
   .collect()
+
+  // (0..col)
+  // .map(|c| {
+  //   (0..row)
+  //   .map( |r| x[r][c] )
+  //   .collect()
+  // })
+  // .collect()
 }
 
 pub fn mult_par (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
@@ -207,7 +182,7 @@ pub fn mult_s (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   .collect()
 }
 
-fn rayon_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
+fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   let pid = env.pid();
   let mut my_env = OwnedEnv::new();
 
@@ -259,61 +234,6 @@ fn rayon_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   Ok(atoms::ok().to_term(env))
 }
 
-/*********************************************************************/
-
-
-fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
-  let pid = env.pid();
-  let mut my_env = OwnedEnv::new();
-
-  let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
-    let _x = args[0].in_env(env);
-    let _y = args[1].in_env(env);
-    let theta = args[2].in_env(env);
-    let alpha = args[3].in_env(env);
-    let iterations = args[4].in_env(env);
-    Ok(my_env.save(make_tuple(env, &[_x, _y, theta, alpha, iterations])))
-  })?;
-
-  std::thread::spawn(move ||  {
-    my_env.send_and_clear(&pid, |env| {
-      let result: NifResult<Term> = (|| {
-        let tuple = saved_list
-        .load(env).decode::<(
-          Term, 
-          Term,
-          Term,
-          Num,
-          i64)>()?; 
-        
-        let x: Vec<Vec<Num>> = tuple.0.decode()?;
-        let y: Vec<Vec<Num>> = tuple.1.decode()?;
-        let theta: Vec<Vec<Num>> = tuple.2.decode()?;
-        let alpha: Num = tuple.3;
-        let iterations: i64 = tuple.4;
-
-        let tx = transpose(&x);
-        let m = y.len() as Num;
-        let (row, col) = (theta.len(), theta[0].len());
-        let tmp = alpha/m;
-        let a :Vec<Vec<Num>> = vec![vec![tmp; col]; row]; 
-
-        let ans = (0..iterations)
-          .fold( theta, |theta, _iteration|{
-           sub2d(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
-          });
-
-        Ok(ans.encode(env))
-      })();
-      match result {
-          Err(_err) => env.error_tuple("test failed".encode(env)),
-          Ok(term) => term
-      }  
-    });
-  });
-  Ok(atoms::ok().to_term(env))
-}
-
 fn nif_dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   // Initialize Arguments
   // Decode to Vector
@@ -321,21 +241,21 @@ fn nif_dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   let y: Vec<Num> = args[1].decode()?;
 
   // Return
-  Ok(dot_product(&x, &y).encode(env))
+  Ok(dot_product_par(&x, &y).encode(env))
 }
 
 fn nif_sub<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
   let x: Vec<Num> = args[0].decode()?;
   let y: Vec<Num> = args[1].decode()?;
-  
-  Ok(sub(&x, &y).encode(env))
+
+  Ok(sub_par(&x, &y).encode(env))
 }
 
 fn nif_emult<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
   let x: Vec<Num> = args[0].decode()?;
   let y: Vec<Num> = args[1].decode()?;
-  
-  Ok(emult(&x, &y).encode(env))
+
+  Ok(emult_par(&x, &y).encode(env))
 }
 
 fn new(first: i64, end: i64) -> Vec<i64> {
@@ -343,8 +263,8 @@ fn new(first: i64, end: i64) -> Vec<i64> {
 }
 
 fn nif_new<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
-  let first: i64 = args[0].decode()?;
-  let end: i64 = args[1].decode()?;
+  let first: i64 = try!(args[0].decode());
+  let end: i64 = try!(args[1].decode());
 
   Ok(new(first, end).encode(env))
 }

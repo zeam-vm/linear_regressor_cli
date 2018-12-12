@@ -15,7 +15,8 @@ defmodule LinearRegressorNif do
 
   # Main Function
   def _fit(_x, _y, _theta, _alpha, _iteration), do: exit(:nif_not_loaded)
-
+  def _rayon_fit(_x, _y, _theta, _alpha, _iteration), do: exit(:nif_not_loaded)
+  
   # Wrapper
   def dot_product(a, b)
     when is_list(a) and is_list(b) do
@@ -34,6 +35,18 @@ defmodule LinearRegressorNif do
   
   def fit( x, y, theta, alpha, iterations ) do
     _fit(
+      x , 
+      y , 
+      theta , 
+      alpha ,
+      iterations)
+    receive do
+      l -> l
+    end
+  end
+
+  def rayon_fit( x, y, theta, alpha, iterations ) do
+    _rayon_fit(
       x , 
       y , 
       theta , 

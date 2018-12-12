@@ -14,10 +14,12 @@ defmodule LinearRegressorCli.MixProject do
   end
 
   defp rustler_crates() do
-  	[linear_regressor_nif: [
-  		path: "native/linear_regressor_nif",
-  		mode: :release,
-  	]]
+    [
+      linear_regressor_nif: [
+        path: "native/linear_regressor_nif",
+        mode: :release,
+      ]
+    ]
   end
 
   # Run "mix help compile.app" to learn about applications.
@@ -30,9 +32,9 @@ defmodule LinearRegressorCli.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-		  { :matrix,    "~> 0.3.2" },
-		  { :csv,       "~> 2.0.0" },
-		  { :rustler,   "~> 0.18.0"},
+      { :matrix,    "~> 0.3.2" },
+      { :csv,       "~> 2.0.0" },
+      { :rustler,   "~> 0.18.0"},
     ]
   end
 end

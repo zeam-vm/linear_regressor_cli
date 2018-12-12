@@ -57,19 +57,36 @@ defmodule LinearModel do
     # IO.puts "theta"
     # IO.inspect theta
     
-    x_test = List.duplicate([1.0], nLabel) 
-    |> Matrix.transpose
-    y_test = [ [ 1.0 ] ]
+    # x_test = List.duplicate([1.0], nLabel) 
+    # |> Matrix.transpose
+    # y_test = [ [ 1.0 ] ]
 
-    predicted = LinearRegressor.predict( x_test, theta )
+    # predicted = LinearRegressor.predict( x_test, theta )
 
-    error = LinearRegressor.cost( x_test, y_test, theta )
+    # error = LinearRegressor.cost( x_test, y_test, theta )
 
-    IO.puts "y_test:  #{ y_test    |> inspect }"
-    IO.puts "predict: #{ predicted |> inspect }"
-    IO.puts ""
-    IO.puts "error: "
-    IO.inspect error
+    # IO.puts "y_test:  #{ y_test    |> inspect }"
+    # IO.puts "predict: #{ predicted |> inspect }"
+    # IO.puts ""
+    # IO.puts "error: "
+    # IO.inspect error
+  end
+
+  def rayon_regressor(nLabel \\ 13, nData \\ 506) do
+    IO.puts "set up"
+    {x_train, y_train, alpha, iterations, theta} = setup(nLabel, nData)
+    |> Benchmark.time 
+
+    IO.puts "main process"
+    theta = Benchmark.time LinearRegressorNif.rayon_fit( 
+      x_train |> Matrix.transpose, 
+      y_train |> Matrix.transpose, 
+      theta, 
+      alpha, 
+      iterations )
+
+    # IO.puts "theta"
+    # IO.inspect theta
   end
 
   def inline_regressor(nLabel \\ 13, nData \\ 506) do
@@ -87,19 +104,5 @@ defmodule LinearModel do
 
     # IO.puts "theta"
     # IO.inspect theta
-    
-    x_test = List.duplicate([1.0], nLabel) 
-    |> Matrix.transpose
-    y_test = [ [ 1.0 ] ]
-
-    predicted = LinearRegressor.predict( x_test, theta )
-
-    error = LinearRegressor.cost( x_test, y_test, theta )
-
-    IO.puts "y_test:  #{ y_test    |> inspect }"
-    IO.puts "predict: #{ predicted |> inspect }"
-    IO.puts ""
-    IO.puts "error: "
-    IO.inspect error
-  end
+    end
 end

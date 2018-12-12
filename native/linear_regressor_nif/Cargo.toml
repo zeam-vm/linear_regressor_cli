@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = []
 
 [lib]
+# The name of a target is the name of the library that will be generated. This
+# is defaulted to the name of the package, with any dashes replaced
+# with underscores. (Rust `extern crate` declarations reference this name;
+# therefore the value must be a valid Rust identifier to be usable.)
 name = "linear_regressor_nif"
 path = "src/lib.rs"
 crate-type = ["dylib"]
@@ -13,3 +17,4 @@ rustler = "0.18.0"
 rustler_codegen = "0.18.0"
 lazy_static = "1.0"
 ndarray = "0.11.0"
+rayon = "1.0"
