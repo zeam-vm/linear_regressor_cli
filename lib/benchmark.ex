@@ -7,4 +7,10 @@ defmodule Benchmark do
       dict
     end
   end
+
+  def pseudo_linear_model(nLabel \\ 13, nData \\ 506) do
+    LinearModel.run
+    |> time
+  end
+
 end
