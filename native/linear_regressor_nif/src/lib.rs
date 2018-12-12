@@ -50,7 +50,7 @@ pub fn sub(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
 
 pub fn sub2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
   x.iter().zip(y.iter())
-  .map(|t| sub(&t.0.to_vec(), &t.1.to_vec()))
+  .map(|t| sub(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
   .collect()
 }
 
@@ -62,7 +62,7 @@ pub fn emult(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
 
 pub fn emult2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
   x.iter().zip(y.iter())
-  .map(|t| emult(&t.0.to_vec(), &t.1.to_vec()))
+  .map(|t| emult(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
   .collect()
 }
 
@@ -85,7 +85,7 @@ pub fn mult (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   x.iter()
   .map(|i| {
     ty.iter()
-    .map(|j| dot_product(&i.to_vec(), &j.to_vec()))
+    .map(|j| dot_product(&i as &Vec<Num>, &j as &Vec<Num>))
     .collect()
   })
   .collect()
@@ -99,57 +99,25 @@ pub fn dot_product_par(x: &Vec<Num>, y: &Vec<Num>) -> Num {
   .sum()
 }
 
-pub fn dot_product_s(x: &Vec<Num>, y: &Vec<Num>) -> Num {
-  x.iter().zip(y.iter())
-  .map(|t| t.0 * t.1)
-  .sum()
-}
-
 pub fn sub_par(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
   x.par_iter().zip(y.par_iter())
   .map(|t| t.0 - t.1)
   .collect()
 }
-
-pub fn sub_s(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
-  x.iter().zip(y.iter())
-  .map(|t| t.0 - t.1)
-  .collect()
-}
-
 pub fn sub2d_par(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
   x.par_iter().zip(y.par_iter())
-  .map(|t| sub_s(&t.0.to_vec(), &t.1.to_vec()))
+  .map(|t| sub(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
   .collect()
 }
-
-pub fn sub2d_s(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
-  x.iter().zip(y.iter())
-  .map(|t| sub_s(&t.0.to_vec(), &t.1.to_vec()))
-  .collect()
-}
-
 pub fn emult_par(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
   x.par_iter().zip(y.par_iter())
   .map(|t| t.0 * t.1)
   .collect()
 }
 
-pub fn emult_s(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
-  x.iter().zip(y.iter())
-  .map(|t| t.0 * t.1)
-  .collect()
-}
-
 pub fn emult2d_par(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
   x.par_iter().zip(y.par_iter())
-  .map(|t| emult_s(&t.0.to_vec(), &t.1.to_vec()))
-  .collect()
-}
-
-pub fn emult2d_s(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
-  x.iter().zip(y.iter())
-  .map(|t| emult_s(&t.0.to_vec(), &t.1.to_vec()))
+  .map(|t| emult(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
   .collect()
 }
 
@@ -169,39 +137,13 @@ pub fn transpose_par(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   .collect()
 }
 
-pub fn transpose_s(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
-  let row :usize = x.len();
-  let col :usize = x[0].len();
-
-  (0..col)
-  .into_iter()
-  .map(|c| {
-    (0..row)
-    .map( |r| x[r][c] )
-    .collect()
-  })
-  .collect()
-}
-
 pub fn mult_par (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   let ty = transpose_par(y);
 
   x.par_iter()
   .map(|i| {
     ty.iter()
-    .map(|j| dot_product_s(&i.to_vec(), &j.to_vec()))
-    .collect()
-  })
-  .collect()
-}
-
-pub fn mult_s (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
-  let ty = transpose_s(y);
-
-  x.iter()
-  .map(|i| {
-    ty.iter()
-    .map(|j| dot_product_s(&i.to_vec(), &j.to_vec()))
+    .map(|j| dot_product(&i as &Vec<Num>, &j as &Vec<Num>))
     .collect()
   })
   .collect()
@@ -246,7 +188,7 @@ fn rayon_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
 
         let ans = (0..iterations)
           .fold( theta, |theta, _iteration|{
-           sub2d_par(&theta, &emult2d_s(&mult_s( &tx, &sub2d_s( &mult_s( &x, &theta ), &y ) ), &a))
+           sub2d_par(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
           });
         Ok(ans.encode(env))
       })();
