@@ -97,7 +97,7 @@ defmodule LinearModel do
     |> Benchmark.time 
 
     IO.puts "main process"
-    LinearRegressorInlining.rayon_fit( 
+    LinearRegressorInlining.fit( 
       x_train |> Matrix.transpose, 
       y_train |> Matrix.transpose, 
       theta, 
@@ -109,23 +109,24 @@ defmodule LinearModel do
     # IO.inspect theta
     end
 
-    def all_benchmark(nNum \\ 1, nLabel \\ 50, offset \\ 100) do
+    def all_benchmark(nNum \\ 6, nLabel \\ 50, base \\ 500, offset \\ 500) do
       require Integer
 
-      num = 2*nNum
+      num = nNum+1
       nDatas = LinearRegressorNif._new(1, num)
-      |> Enum.filter(& Integer.is_odd(&1))
-      |> Enum.map(& &1*offset)
+      |> Enum.map(& &1*offset + base)
+
 
       rust_result = nDatas
-      |> Enum.map(& { "50, #{&1}", rust_regressor(50, &1) |> elem(0)})
+      |> Enum.map(& { "#{nLabel}, #{&1}", rust_regressor(nLabel, &1) |> elem(0)})
+
 
       rayon_result = nDatas
-      |> Enum.map(& { "50, #{&1}", rayon_regressor(50, &1) |> elem(0)})
+      |> Enum.map(& { "#{nLabel}, #{&1}", rayon_regressor(nLabel, &1) |> elem(0)})
 
       ratio = 0..(length(nDatas)-1)
         |> Enum.map(& {
-          "50, #{Enum.at(nDatas, &1)}",
+          "#{nLabel}, #{Enum.at(nDatas, &1)}",
           (Enum.at(rust_result, &1) |> elem(1))
           / (Enum.at(rayon_result, &1) |> elem(1))
           })
