@@ -109,7 +109,7 @@ defmodule LinearModel do
     # IO.inspect theta
     end
 
-    def all_benchmark(nNum \\ 6, nLabel \\ 50, base \\ 500, offset \\ 500) do
+    def all_benchmark(nNum \\ 5, nLabel \\ 50, base \\ 500, offset \\ 500) do
       require Integer
 
       num = nNum+1
