@@ -123,15 +123,17 @@ defmodule LinearModel do
       rayon_result = nDatas
       |> Enum.map(& { "50, #{&1}", rayon_regressor(50, &1) |> elem(0)})
 
-      rayon_result
       ratio = 0..(length(nDatas)-1)
         |> Enum.map(& {
           "50, #{Enum.at(nDatas, &1)}",
           (Enum.at(rust_result, &1) |> elem(1))
           / (Enum.at(rayon_result, &1) |> elem(1))
           })
+      |> IO.inspect
 
-      ratio
+      ratio |> Enum.map(& &1 |> elem(0) |> IO.inspect)
+
+      ratio |> Enum.map(& &1 |> elem(1) |> IO.inspect)
     end
 
     def to_int(num) when is_float(num) do
