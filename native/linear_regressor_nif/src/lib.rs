@@ -37,32 +37,71 @@ rustler_export_nifs! {
 }
 
 pub fn dot_product(x: &Vec<Num>, y: &Vec<Num>) -> Num {
-  x.iter().zip(y.iter())
-  .map(|t| t.0 * t.1)
+  // x.iter().zip(y.iter())
+  // .map(|t| t.0 * t.1)
+  // .fold(0.0, |sum, i| sum + i)
+
+  let row :usize = x.len();
+  
+  (0..row)
+  .map(|r| x[r]*y[r] )
   .fold(0.0, |sum, i| sum + i)
 }
 
 pub fn sub(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
-  x.iter().zip(y.iter())
-  .map(|t| t.0 - t.1)
+  // x.iter().zip(y.iter())
+  // .map(|t| t.0 - t.1)
+  // .collect()
+  let row :usize = x.len();
+  
+  (0..row)
+  .map(|r| x[r]-y[r] )
   .collect()
 }
 
 pub fn sub2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
-  x.iter().zip(y.iter())
-  .map(|t| sub(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
+  // x.iter().zip(y.iter())
+  // .map(|t| sub(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
+  // .collect()
+
+  let row :usize = x.len();
+  let col :usize = x[0].len();
+
+  (0..row)
+  .map(|r| {
+    (0..col)
+    .map( |c| x[r][c]-y[r][c])
+    .collect()
+  })
   .collect()
 }
 
 pub fn emult(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
-  x.iter().zip(y.iter())
-  .map(|t| t.0 * t.1)
+  // x.iter().zip(y.iter())
+  // .map(|t| t.0 * t.1)
+  // .collect()
+
+  let row :usize = x.len();
+  
+  (0..row)
+  .map(|r| x[r]*y[r] )
   .collect()
 }
 
 pub fn emult2d(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
-  x.iter().zip(y.iter())
-  .map(|t| emult(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
+  // x.iter().zip(y.iter())
+  // .map(|t| emult(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
+  // .collect()
+
+  let row :usize = x.len();
+  let col :usize = x[0].len();
+
+  (0..row)
+  .map(|r| {
+    (0..col)
+    .map( |c| x[r][c]*y[r][c])
+    .collect()
+  })
   .collect()
 }
 
@@ -105,8 +144,17 @@ pub fn sub_par(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
   .collect()
 }
 pub fn sub2d_par(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
-  x.par_iter().zip(y.par_iter())
-  .map(|t| sub(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
+  let row :usize = x.len();
+  let col :usize = x[0].len();
+
+  (0..row)
+  .into_par_iter()
+  .map(|r| {
+    (0..col)
+    // .into_par_iter()
+    .map( |c| x[r][c]-y[r][c])
+    .collect()
+  })
   .collect()
 }
 pub fn emult_par(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
@@ -116,8 +164,17 @@ pub fn emult_par(x: &Vec<Num>, y: &Vec<Num>) -> Vec<Num> {
 }
 
 pub fn emult2d_par(x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>>{
-  x.par_iter().zip(y.par_iter())
-  .map(|t| emult(&t.0 as &Vec<Num>, &t.1 as &Vec<Num>))
+  let row :usize = x.len();
+  let col :usize = x[0].len();
+
+  (0..row)
+  // .into_par_iter()
+  .map(|r| {
+    (0..col)
+    // .into_par_iter()
+    .map( |c| x[r][c]*y[r][c])
+    .collect()
+  })
   .collect()
 }
 

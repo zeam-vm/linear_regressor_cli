@@ -41,18 +41,19 @@ defmodule LinearModel do
 
   end
 
-  def nif_regressor(nLabel \\ 13, nData \\ 506) do
+  def rust_regressor(nLabel \\ 13, nData \\ 506) do
     IO.puts "set up"
     {x_train, y_train, alpha, iterations, theta} = setup(nLabel, nData)
     |> Benchmark.time 
 
     IO.puts "main process"
-    theta = Benchmark.time LinearRegressorNif.fit( 
+    LinearRegressorNif.fit( 
       x_train |> Matrix.transpose, 
       y_train |> Matrix.transpose, 
       theta, 
       alpha, 
       iterations )
+    |> Benchmark.time(true)
 
     # IO.puts "theta"
     # IO.inspect theta
@@ -78,12 +79,13 @@ defmodule LinearModel do
     |> Benchmark.time 
 
     IO.puts "main process"
-    theta = Benchmark.time LinearRegressorNif.rayon_fit( 
+    LinearRegressorNif.rayon_fit( 
       x_train |> Matrix.transpose, 
       y_train |> Matrix.transpose, 
       theta, 
       alpha, 
       iterations )
+    |> Benchmark.time(true)
 
     # IO.puts "theta"
     # IO.inspect theta
@@ -95,14 +97,44 @@ defmodule LinearModel do
     |> Benchmark.time 
 
     IO.puts "main process"
-    theta = Benchmark.time LinearRegressorInlining.fit( 
+    LinearRegressorInlining.rayon_fit( 
       x_train |> Matrix.transpose, 
       y_train |> Matrix.transpose, 
       theta, 
       alpha, 
       iterations )
+    |> Benchmark.time(true)
 
     # IO.puts "theta"
     # IO.inspect theta
+    end
+
+    def all_benchmark(nNum \\ 1, nLabel \\ 50, offset \\ 100) do
+      require Integer
+
+      num = 2*nNum
+      nDatas = LinearRegressorNif._new(1, num)
+      |> Enum.filter(& Integer.is_odd(&1))
+      |> Enum.map(& &1*offset)
+
+      rust_result = nDatas
+      |> Enum.map(& { "50, #{&1}", rust_regressor(50, &1) |> elem(0)})
+
+      rayon_result = nDatas
+      |> Enum.map(& { "50, #{&1}", rayon_regressor(50, &1) |> elem(0)})
+
+      rayon_result
+      ratio = 0..(length(nDatas)-1)
+        |> Enum.map(& {
+          "50, #{Enum.at(nDatas, &1)}",
+          (Enum.at(rust_result, &1) |> elem(1))
+          / (Enum.at(rayon_result, &1) |> elem(1))
+          })
+
+      ratio
+    end
+
+    def to_int(num) when is_float(num) do
+      num |> Float.floor |> Float.to_string |> Integer.parse |> elem(0)
     end
 end
