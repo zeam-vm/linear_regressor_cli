@@ -27,17 +27,16 @@ defmodule BostonNif do
 
     alpha = 0.0000003
     iterations = 10000
-    theta = List.duplicate([0.0], length(hd x_train))
 
-    {x_train, y_train, alpha, iterations, theta}
+    [x_train, y_train, alpha, iterations]
   end
 
   def rust_regressor do
     IO.puts "set up"
-    {x_train, y_train, alpha, iterations, theta} = Benchmark.time setup()
+    [x_train, y_train, alpha, iterations] = Benchmark.time setup()
 
     IO.puts "main process"
-    theta = Benchmark.time LinearRegressorNif.fit( x_train, y_train, theta, alpha, iterations )
+    theta = Benchmark.time LinearRegressorNif.rust_fit( x_train, y_train, alpha, iterations )
 
     IO.puts "theta"
     IO.inspect theta
@@ -58,10 +57,10 @@ defmodule BostonNif do
 
   def rayon_regressor do
     IO.puts "set up"
-    {x_train, y_train, alpha, iterations, theta} = Benchmark.time setup()
+    {x_train, y_train, alpha, iterations} = Benchmark.time setup()
 
     IO.puts "main process"
-    theta = Benchmark.time LinearRegressorNif.rayon_fit( x_train, y_train, theta, alpha, iterations )
+    theta = Benchmark.time LinearRegressorNif.rayon_fit( x_train, y_train, alpha, iterations )
 
     IO.puts "theta"
     IO.inspect theta

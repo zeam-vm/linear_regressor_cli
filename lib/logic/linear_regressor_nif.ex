@@ -14,9 +14,10 @@ defmodule LinearRegressorNif do
   def _emult(_a, _b), do: exit(:nif_not_loaded)
 
   # Main Function
-  def _fit(_x, _y, _theta, _alpha, _iteration), do: exit(:nif_not_loaded)
-  def _rayon_fit(_x, _y, _theta, _alpha, _iteration), do: exit(:nif_not_loaded)
-  
+  def _fit(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
+  def _rayon_fit(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
+  def _nif_benchmark(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
+
   # Wrapper
   def dot_product(a, b)
     when is_list(a) and is_list(b) do
@@ -33,11 +34,10 @@ defmodule LinearRegressorNif do
   end
   def to_float(any), do: any
   
-  def fit( x, y, theta, alpha, iterations ) do
+  def rust_fit( x, y, alpha, iterations ) do
     _fit(
       x , 
       y , 
-      theta , 
       alpha ,
       iterations)
     receive do
@@ -45,11 +45,21 @@ defmodule LinearRegressorNif do
     end
   end
 
-  def rayon_fit( x, y, theta, alpha, iterations ) do
+  def rayon_fit( x, y, alpha, iterations ) do
     _rayon_fit(
       x , 
       y , 
-      theta , 
+      alpha ,
+      iterations)
+    receive do
+      l -> l
+    end
+  end
+
+  def nif_benchmark( x, y, alpha, iterations ) do
+    _nif_benchmark(
+      x , 
+      y , 
       alpha ,
       iterations)
     receive do

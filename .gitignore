@@ -27,3 +27,6 @@ priv/
 
 # Ignore Cargo.lock
 Cargo.lock
+
+# Ignore bench snapshot
+/bench/snapshots/

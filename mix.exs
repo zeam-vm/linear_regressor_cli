@@ -35,6 +35,7 @@ defmodule LinearRegressorCli.MixProject do
       { :matrix,    "~> 0.3.2" },
       { :csv,       "~> 2.0.0" },
       { :rustler,   "~> 0.18.0"},
+      { :benchfella, "~> 0.3.0"},
     ]
   end
 end

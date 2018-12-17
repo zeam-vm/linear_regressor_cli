@@ -2,13 +2,16 @@
 // #[macro_use] extern crate rustler_codegen;
 #[macro_use] extern crate lazy_static;
 extern crate rayon;
+extern crate time;
+extern crate num_cpus;
 
 use rustler::{Env, Term, NifResult, Encoder};
 use rustler::env::{OwnedEnv, SavedTerm};
-
 use rustler::types::tuple::make_tuple;
-use rayon::prelude::*;
 
+use rayon::prelude::*;
+use rayon::ThreadPool;
+use rayon::ThreadPoolBuildError;
 
 type Num = f64;
 
@@ -30,8 +33,9 @@ rustler_export_nifs! {
     ("_new", 2, nif_new),
     ("_sub", 2, nif_sub),
     ("_emult", 2, nif_emult),
-    ("_fit", 5, nif_fit),
-    ("_rayon_fit", 5, rayon_fit), 
+    ("_fit", 4, nif_fit),
+    ("_rayon_fit", 4, rayon_fit), 
+    ("_nif_benchmark", 4, nif_benchmark),
   ],
   None
 }
@@ -119,7 +123,8 @@ pub fn transpose(x: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
 }
 
 pub fn mult (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
-  let ty = transpose(y);
+  // let ty = transpose(y);
+  let ty: Box<Vec<Vec<Num>>> = Box::new(transpose(y));
 
   x.iter()
   .map(|i| {
@@ -206,60 +211,75 @@ pub fn mult_par (x: &Vec<Vec<Num>>, y: &Vec<Vec<Num>>) -> Vec<Vec<Num>> {
   .collect()
 }
 
-fn rayon_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
-  let pid = env.pid();
-  let mut my_env = OwnedEnv::new();
-
-  let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
-    let _x = args[0].in_env(env);
-    let _y = args[1].in_env(env);
-    let theta = args[2].in_env(env);
-    let alpha = args[3].in_env(env);
-    let iterations = args[4].in_env(env);
-    Ok(my_env.save(make_tuple(env, &[_x, _y, theta, alpha, iterations])))
-  })?;
-
-  std::thread::spawn(move ||  {
-    my_env.send_and_clear(&pid, |env| {
-      let result: NifResult<Term> = (|| {
-        let tuple = saved_list
-        .load(env).decode::<(
-          Term,
-          Term,
-          Term,
-          Num,
-          i64)>()?;
-
-        let x: Vec<Vec<Num>> = try!(tuple.0.decode());
-        let y: Vec<Vec<Num>> = try!(tuple.1.decode());
-        let theta: Vec<Vec<Num>> = try!(tuple.2.decode());
-        let alpha: Num = tuple.3;
-        let iterations: i64 = tuple.4;
-
-        let tx = transpose_par(&x);
-        let m = y.len() as Num;
-        let (row, col) = (theta.len(), theta[0].len());
-        let tmp = alpha/m;
-        // let a = new_vec2(row, col, tmp);
-        let a :Vec<Vec<Num>> = vec![vec![tmp; col]; row];
-
-        let ans = (0..iterations)
-          .fold( theta, |theta, _iteration|{
-           sub2d_par(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
-          });
-        Ok(ans.encode(env))
-      })();
-      match result {
-          Err(_err) => env.error_tuple("test failed".encode(env)),
-          Ok(term) => term
-      }
-    });
-  });
-  Ok(atoms::ok().to_term(env))
+fn set_num_threads(n: usize) -> Result<ThreadPool, ThreadPoolBuildError> {
+  rayon::ThreadPoolBuilder::new().num_threads(n).build()
 }
 
-/*********************************************************************/
+fn benchmark_rayon_fit(
+  n: usize,
+  x: &Vec<Vec<Num>>, 
+  y: &Vec<Vec<Num>>, 
+  alpha: Num,
+  iterations: i64) -> Result<f64, ThreadPoolBuildError> {
+    {
+        match set_num_threads(n) {
+          Ok(pool) => pool.install(|| {
+            let start_time = time::get_time();
+            fit_par(x, y, alpha, iterations);
+            let end_time = time::get_time();
+            let diffsec = end_time.sec - start_time.sec;   // i64
+            let diffsub = end_time.nsec - start_time.nsec; // i32
+            let realsec = diffsec as f64 + diffsub as f64 * 1e-9;
+            Ok(realsec)
+          }),
+          Err(e) => Err(e),
+        }
+    }
+}
 
+fn fit(
+  x: &Vec<Vec<Num>>, 
+  y: &Vec<Vec<Num>>, 
+  alpha: Num,
+  iterations: i64
+  ) -> Vec<Vec<Num>>{
+
+  let tx = transpose(&x);
+  let m = y.len() as Num;
+  // let (row, col) = (theta.len(), theta[0].len());
+  let (row, col) = (x.len(), x[0].len());
+  let tmp = alpha/m;
+  let a :Vec<Vec<Num>> = vec![vec![tmp; col]; row]; 
+  let theta = vec![vec![0.0; 1]; col];
+
+  let ans = (0..iterations)
+    .fold( theta, |theta, _iteration|{
+     sub2d(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
+  });
+
+  ans
+}
+
+fn fit_par(
+  x: &Vec<Vec<Num>>, 
+  y: &Vec<Vec<Num>>, 
+  alpha: Num,
+  iterations: i64
+  ) -> Vec<Vec<Num>>{
+  
+  let tx = transpose(&x);
+  let m = y.len() as Num;
+  // let (row, col) = (theta.len(), theta[0].len());
+  let (row, col) = (x.len(), x[0].len());
+  let tmp = alpha/m;
+  let a :Vec<Vec<Num>> = vec![vec![tmp; col]; row]; 
+  let theta = vec![vec![0.0; 1]; col];
+
+  (0..iterations)
+    .fold( theta, |theta, _iteration|{
+     sub2d_par(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
+  })
+}
 
 fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   let pid = env.pid();
@@ -268,10 +288,49 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
     let _x = args[0].in_env(env);
     let _y = args[1].in_env(env);
-    let theta = args[2].in_env(env);
-    let alpha = args[3].in_env(env);
-    let iterations = args[4].in_env(env);
-    Ok(my_env.save(make_tuple(env, &[_x, _y, theta, alpha, iterations])))
+    let alpha = args[2].in_env(env);
+    let iterations = args[3].in_env(env);
+    Ok(my_env.save(make_tuple(env, &[_x, _y, alpha, iterations])))
+  })?;
+
+  std::thread::spawn(move ||  {
+    my_env.send_and_clear(&pid, |env| {
+      let result: NifResult<Term> = (|| {
+        let tuple = saved_list
+        .load(env).decode::<(  
+          Term, 
+          Term,
+          Num,
+          i64)>()?; 
+        
+        let x: Vec<Vec<Num>> = tuple.0.decode()?;
+        let y: Vec<Vec<Num>> = tuple.1.decode()?;
+        let alpha: Num = tuple.2;
+        let iterations: i64 = tuple.3;
+
+        let ans = fit(&x, &y, alpha, iterations);
+
+        Ok(ans.encode(env))
+      })();
+      match result {
+          Err(_err) => env.error_tuple("test failed".encode(env)),
+          Ok(term) => term
+      }  
+    });
+  });
+  Ok(atoms::ok().to_term(env))
+}
+
+fn rayon_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
+  let pid = env.pid();
+  let mut my_env = OwnedEnv::new();
+
+  let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
+    let _x = args[0].in_env(env);
+    let _y = args[1].in_env(env);
+    let alpha = args[2].in_env(env);
+    let iterations = args[3].in_env(env);
+    Ok(my_env.save(make_tuple(env, &[_x, _y, alpha, iterations])))
   })?;
 
   std::thread::spawn(move ||  {
@@ -281,28 +340,74 @@ fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
         .load(env).decode::<(
           Term, 
           Term,
+          Num,
+          i64)>()?; 
+        
+        let x: Vec<Vec<Num>> = tuple.0.decode()?;
+        let y: Vec<Vec<Num>> = tuple.1.decode()?;
+        let alpha: Num = tuple.2;
+        let iterations: i64 = tuple.3;
+
+        let ans = fit_par(&x, &y, alpha, iterations);
+
+        Ok(ans.encode(env))
+      })();
+      match result {
+          Err(_err) => env.error_tuple("test failed".encode(env)),
+          Ok(term) => term
+      }  
+    });
+  });
+  Ok(atoms::ok().to_term(env))
+}
+
+fn nif_benchmark<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
+  let pid = env.pid();
+  let mut my_env = OwnedEnv::new();
+
+  let saved_list = my_env.run(|env| -> NifResult<SavedTerm> {
+    let _x = args[0].in_env(env);
+    let _y = args[1].in_env(env);
+    let alpha = args[2].in_env(env);
+    let iterations = args[3].in_env(env);
+    Ok(my_env.save(make_tuple(env, &[_x, _y, alpha, iterations])))
+  })?;
+
+  std::thread::spawn(move ||  {
+    my_env.send_and_clear(&pid, |env| {
+      let result: NifResult<Term> = (|| {
+        let tuple = saved_list
+        .load(env).decode::<(
+          Term, 
           Term,
           Num,
           i64)>()?; 
         
         let x: Vec<Vec<Num>> = tuple.0.decode()?;
         let y: Vec<Vec<Num>> = tuple.1.decode()?;
-        let theta: Vec<Vec<Num>> = tuple.2.decode()?;
-        let alpha: Num = tuple.3;
-        let iterations: i64 = tuple.4;
+        let alpha: Num = tuple.2;
+        let iterations: i64 = tuple.3;
 
-        let tx = transpose(&x);
-        let m = y.len() as Num;
-        let (row, col) = (theta.len(), theta[0].len());
-        let tmp = alpha/m;
-        let a :Vec<Vec<Num>> = vec![vec![tmp; col]; row]; 
+        let num = num_cpus::get();
+        let mut single:f64 = 0.0;
 
-        let ans = (0..iterations)
-          .fold( theta, |theta, _iteration|{
-           sub2d(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
-          });
+        println!("header, thread, speedup efficiency");
 
-        Ok(ans.encode(env))
+        (1..=num as usize).collect::<Vec<_>>().iter().for_each(|&n| {
+          let minsec = (1..=10).collect::<Vec<_>>().iter().map(|_|
+            match benchmark_rayon_fit(n, &x, &y, alpha, iterations) {
+              Ok(realsec) => realsec,
+              Err(e) => {println!("error: {}", e); ::std::f64::NAN},
+            }
+          ).fold(0.0/0.0, |m, v| v.min(m));
+          match n {
+            1 => single = minsec,
+            _ => {},
+          }
+          println!(", {}, {}", n, ((single / minsec / (n as f64)) * 1000.0).round() / 10.0 );
+        });
+
+        Ok([0].encode(env))
       })();
       match result {
           Err(_err) => env.error_tuple("test failed".encode(env)),

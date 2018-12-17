@@ -32,112 +32,36 @@ defmodule LinearModel do
 
     alpha = 0.0000003
     iterations = 10000
-    theta = List.duplicate([0.0], nLabel)
+    # theta = List.duplicate([0.0], nLabel)
 
-    {x_train, y_train, alpha, iterations, theta}
+    {x_train, y_train, alpha, iterations}
   end
 
-  def predict do
-
-  end
-
-  def rust_regressor(nLabel \\ 13, nData \\ 506) do
-    IO.puts "set up"
-    {x_train, y_train, alpha, iterations, theta} = setup(nLabel, nData)
-    |> Benchmark.time 
-
-    IO.puts "main process"
-    LinearRegressorNif.fit( 
+  def rust_fit({x_train, y_train, alpha, iterations}) do
+    LinearRegressorNif.rust_fit( 
       x_train |> Matrix.transpose, 
       y_train |> Matrix.transpose, 
-      theta, 
       alpha, 
       iterations )
-    |> Benchmark.time(true)
-
-    # IO.puts "theta"
-    # IO.inspect theta
-    
-    # x_test = List.duplicate([1.0], nLabel) 
-    # |> Matrix.transpose
-    # y_test = [ [ 1.0 ] ]
-
-    # predicted = LinearRegressor.predict( x_test, theta )
-
-    # error = LinearRegressor.cost( x_test, y_test, theta )
-
-    # IO.puts "y_test:  #{ y_test    |> inspect }"
-    # IO.puts "predict: #{ predicted |> inspect }"
-    # IO.puts ""
-    # IO.puts "error: "
-    # IO.inspect error
   end
 
-  def rayon_regressor(nLabel \\ 13, nData \\ 506) do
-    IO.puts "set up"
-    {x_train, y_train, alpha, iterations, theta} = setup(nLabel, nData)
-    |> Benchmark.time 
-
-    IO.puts "main process"
+  def rayon_fit({x_train, y_train, alpha, iterations}) do
     LinearRegressorNif.rayon_fit( 
       x_train |> Matrix.transpose, 
       y_train |> Matrix.transpose, 
-      theta, 
       alpha, 
       iterations )
-    |> Benchmark.time(true)
-
-    # IO.puts "theta"
-    # IO.inspect theta
   end
 
-  def inline_regressor(nLabel \\ 13, nData \\ 506) do
-    IO.puts "set up"
-    {x_train, y_train, alpha, iterations, theta} = setup(nLabel, nData)
-    |> Benchmark.time 
+  def to_int(num) when is_float(num) do
+    num |> Float.floor |> Float.to_string |> Integer.parse |> elem(0)
+  end
 
-    IO.puts "main process"
-    LinearRegressorInlining.fit( 
+  def variable_thread_benchmark({x_train, y_train, alpha, iterations}) do
+    LinearRegressorNif.nif_benchmark( 
       x_train |> Matrix.transpose, 
       y_train |> Matrix.transpose, 
-      theta, 
       alpha, 
       iterations )
-    |> Benchmark.time(true)
-
-    # IO.puts "theta"
-    # IO.inspect theta
-    end
-
-    def all_benchmark(nNum \\ 5, nLabel \\ 50, base \\ 500, offset \\ 500) do
-      require Integer
-
-      num = nNum+1
-      nDatas = LinearRegressorNif._new(1, num)
-      |> Enum.map(& &1*offset + base)
-
-
-      rust_result = nDatas
-      |> Enum.map(& { "#{nLabel}, #{&1}", rust_regressor(nLabel, &1) |> elem(0)})
-
-
-      rayon_result = nDatas
-      |> Enum.map(& { "#{nLabel}, #{&1}", rayon_regressor(nLabel, &1) |> elem(0)})
-
-      ratio = 0..(length(nDatas)-1)
-        |> Enum.map(& {
-          "#{nLabel}, #{Enum.at(nDatas, &1)}",
-          (Enum.at(rust_result, &1) |> elem(1))
-          / (Enum.at(rayon_result, &1) |> elem(1))
-          })
-      |> IO.inspect
-
-      ratio |> Enum.map(& &1 |> elem(0) |> IO.inspect)
-
-      ratio |> Enum.map(& &1 |> elem(1) |> IO.inspect)
-    end
-
-    def to_int(num) when is_float(num) do
-      num |> Float.floor |> Float.to_string |> Integer.parse |> elem(0)
-    end
+  end
 end
