@@ -7,7 +7,7 @@ use rayon::ThreadPoolBuildError;
 use rayon::ThreadPool;
 use atoms;
 
-use aiml::LinearRegressor as lr;
+use ai_ml::linear_regressor as lr;
 
 pub fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   let pid = env.pid();

@@ -1,7 +1,7 @@
 
 use rustler::{Env, Term, NifResult, Encoder};
 
-use Matrix::SingleCore as sc;
+use matrix::single_core as sc;
 
 pub fn dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   // Initialize Arguments

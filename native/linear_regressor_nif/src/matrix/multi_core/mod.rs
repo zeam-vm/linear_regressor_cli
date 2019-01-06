@@ -1,11 +1,13 @@
+#![allow(dead_code)]
+
 pub mod nif;
 
 extern crate rayon;
-use Matrix::MultiCore::rayon::prelude::*;
+use matrix::multi_core::rayon::prelude::*;
 // use Matrix::MultiCore::rayon::ThreadPool;
 // use Matrix::MultiCore::rayon::ThreadPoolBuildError;
 
-use Matrix::SingleCore as sc;
+use matrix::single_core as sc;
 
 pub fn dot_product_par(x: &Vec<f64>, y: &Vec<f64>) -> f64 {
   x.par_iter().zip(y.par_iter())

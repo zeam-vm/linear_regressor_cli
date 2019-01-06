@@ -5,14 +5,14 @@
 extern crate num_cpus;
 extern crate rayon;
 
-mod Matrix;
-mod aiml;
+mod matrix;
+mod ai_ml;
 mod atoms;
 
 // 関数単位でuseは慣習的ではない(一旦使う)
-use Matrix::SingleCore::nif as single;
+use matrix::single_core::nif as single;
 // use Matrix::MultiCore::nif as mlt;
-use aiml::LinearRegressor::nif as lr;
+use ai_ml::linear_regressor::nif as lr;
 
 rustler_export_nifs! {
   "Elixir.LinearRegressorNif",

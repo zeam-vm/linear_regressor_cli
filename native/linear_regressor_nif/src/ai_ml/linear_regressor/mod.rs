@@ -1,7 +1,7 @@
 pub mod nif;
 
-use Matrix::SingleCore as single;
-use Matrix::MultiCore as multi;
+use matrix::single_core as single;
+use matrix::multi_core as multi;
 
 pub fn fit(
   x: &Vec<Vec<f64>>, 
