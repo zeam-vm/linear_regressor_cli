@@ -1,4 +1,4 @@
- defmodule LinearRegressorInlining do
+ defmodule LinearRegressor.Inlining do
   def predict( x, theta ), do: Matrix.mult( x, theta )
 
   def cost( x, y, theta ) do

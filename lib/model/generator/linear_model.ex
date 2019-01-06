@@ -4,9 +4,6 @@ defmodule LinearModel do
   @doc"""
 
   """
-
-  # y = x + noize
-  # 0 <= x < 100
   # this length of model is same as boston 
   def generator(nLabel \\ 13, nData \\ 506) do
     x = List.duplicate(0, nLabel)

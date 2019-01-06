@@ -1,49 +1,32 @@
 # LinearRegressorCli
 
-**TODO: Add description**
-
-```bash
-$ mix run -e "Linnerud.run"
-y_test:  [[191]]
-predict: [[165.69839452596122]]
-
-error:
-320.08561978195456
-320.08561978195456
-```
-
-```bash
-$ mix run -e "Boston.run"
-y_test:  [[24.0]]
-predict: [[25.26741625578046]]
-
-error:
-0.803171982708281
-0.803171982708281
-```
-
 # Benchmark
+
 ```bash
-$ mix run -e BostonNif.benchmark
+$ mix bench
+Compiling NIF crate :linear_regressor_nif (native/linear_regressor_nif)...
+    Finished release [optimized] target(s) in 0.10s
+Settings:
+  duration:      1.0 s
 
-Compiling NIF crate :linear_regressor_nif (native/regressor)...
-    Finished release [optimized] target(s) in 0.21s
-7.156337
+## BostonModelBench
+[03:07:09] 1/4: Elixir
+[03:07:21] 2/4: Elixir.Inlining
+[03:07:30] 3/4: Rust
+[03:07:32] 4/4: Rust.Rayon
+
+Finished in 25.42 seconds
+
+## BostonModelBench
+benchmark name   iterations   average time
+Rust                      1   2026726.00 µs/op
+Rust.Rayon                1   2052490.00 µs/op
+Elixir.Inlining           1   8327351.00 µs/op
+Elixir                    1   12775923.00 µs/op
 
 ```
 
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `linear_regressor_cli` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:linear_regressor_cli, "~> 0.1.0"}
-  ]
-end
-```
+![Graph](./bench/graphs/index.html)
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can

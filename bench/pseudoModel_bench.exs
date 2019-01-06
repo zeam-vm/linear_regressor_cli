@@ -17,4 +17,8 @@ defmodule PseudoModelBench do
   # bench "Rayon variable thread",  [data: bench_context] do
   #   LinearModel.variable_thread_benchmark(data)
   # end
+
+  # defp setup do
+  #   LinearModel.setup
+  # end
 end

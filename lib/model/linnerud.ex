@@ -17,7 +17,7 @@ defmodule Linnerud do
 		iterations = 10000
 		theta = [ [ 0 ], [ 0 ], [ 0 ] ]
 
-		theta = LinearRegressorInlining.fit( x_train, y_train, theta, alpha, iterations )
+		theta = LinearRegressor.Inlining.fit( x_train, y_train, theta, alpha, iterations )
 		IO.inspect theta
 
 		# x_test = [ [ 5 ], [ 162 ], [ 60 ] ] |> Matrix.transpose
