@@ -1,5 +1,34 @@
 defmodule Boston do
 
+	def setup do
+    features = Dataset.load_datas( "data/boston_house_prices_x.csv" )
+    targets  = Dataset.load_datas( "data/boston_house_prices_y.csv" )
+
+    x_train = 
+    [ 
+      features[ :crim ], 
+      features[ :zn ], 
+      features[ :indus ], 
+      features[ :chas ], 
+      features[ :nox ], 
+      features[ :rm ], 
+      features[ :age ], 
+      features[ :dis ], 
+      features[ :rad ], 
+      features[ :tax ], 
+      features[ :ptratio ], 
+      features[ :b ], 
+      features[ :lstat ], 
+    ]
+    |> Matrix.transpose
+    y_train = [ targets[ :medv ] ] |> Matrix.transpose
+
+    alpha = 0.0000003
+    iterations = 10000
+
+    [x_train, y_train, alpha, iterations]
+  end
+
 	def run do
 		features = Dataset.load_datas( "data/boston_house_prices_x.csv" )
 		targets  = Dataset.load_datas( "data/boston_house_prices_y.csv" )

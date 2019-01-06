@@ -1,2 +1,2 @@
-pub mod single_thread;
-pub mod multi_thread;
+pub mod SingleCore;
+pub mod MultiCore;

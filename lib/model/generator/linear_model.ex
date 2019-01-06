@@ -38,7 +38,7 @@ defmodule LinearModel do
   end
 
   def rust_fit({x_train, y_train, alpha, iterations}) do
-    LinearRegressorNif.rust_fit( 
+    LinearRegressorNif.SingleCore.fit( 
       x_train |> Matrix.transpose, 
       y_train |> Matrix.transpose, 
       alpha, 
@@ -46,7 +46,7 @@ defmodule LinearModel do
   end
 
   def rayon_fit({x_train, y_train, alpha, iterations}) do
-    LinearRegressorNif.rayon_fit( 
+    LinearRegressorNif.MultiCore.fit( 
       x_train |> Matrix.transpose, 
       y_train |> Matrix.transpose, 
       alpha, 

@@ -1,3 +1,5 @@
+pub mod nif;
+
 pub fn dot_product(x: &Vec<f64>, y: &Vec<f64>) -> f64 {
   // x.iter().zip(y.iter())
   // .map(|t| t.0 * t.1)
@@ -93,25 +95,6 @@ pub fn mult (x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
   .collect()
 }
 
-pub fn fit(
-  x: &Vec<Vec<f64>>, 
-  y: &Vec<Vec<f64>>, 
-  alpha: f64,
-  iterations: i64
-  ) -> Vec<Vec<f64>>{
-
-  let tx = transpose(&x);
-  let m = y.len() as f64;
-  // let (row, col) = (theta.len(), theta[0].len());
-  let (row, col) = (x.len(), x[0].len());
-  let tmp = alpha/m;
-  let a :Vec<Vec<f64>> = vec![vec![tmp; col]; row]; 
-  let theta = vec![vec![0.0; 1]; col];
-
-  let ans = (0..iterations)
-    .fold( theta, |theta, _iteration|{
-     sub2d(&theta, &emult2d(&mult( &tx, &sub2d( &mult( &x, &theta ), &y ) ), &a))
-  });
-
-  ans
+fn new(first: i64, end: i64) -> Vec<i64> {
+  (first..end).collect()
 }
