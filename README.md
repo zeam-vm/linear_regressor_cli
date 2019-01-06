@@ -1,4 +1,9 @@
 # LinearRegressorCli
+$ git clone https://github.com/zeam-vm/linear_regressor_cli.git  
+$ cd linear_regressor_cli  
+$ git checkout -b rustlering origin/rustlering  
+$ mix deps.get  
+$ mix bench  
 
 # Benchmark
 
