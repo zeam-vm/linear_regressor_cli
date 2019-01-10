@@ -20,7 +20,16 @@ pub fn fit(
 
   let ans = (0..iterations)
     .fold( theta, |theta, _iteration|{
-     single::sub2d(&theta, &single::emult2d(&single::mult( &tx, &single::sub2d( &single::mult( &x, &theta ), &y ) ), &a))
+     single::sub2d(
+      &theta, 
+      &single::emult2d(
+        &single::mult( 
+          &tx, 
+          &single::sub2d( 
+            &single::mult( &x, &theta ), 
+            &y )
+           ), 
+        &a))
   });
 
   ans
@@ -43,6 +52,6 @@ pub fn fit_par(
 
   (0..iterations)
     .fold( theta, |theta, _iteration|{
-     multi::sub2d_par(&theta, &single::emult2d(&single::mult( &tx, &single::sub2d( &single::mult( &x, &theta ), &y ) ), &a))
+     multi::sub2d(&theta, &single::emult2d(&single::mult( &tx, &single::sub2d( &single::mult( &x, &theta ), &y ) ), &a))
   })
 }

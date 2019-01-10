@@ -9,7 +9,7 @@ defmodule LinearModel do
     x = List.duplicate(0, nLabel)
     |> Enum.map(
       fn _i -> 
-        LinearRegressorNif._new(0, nData)
+        LinearRegressorNif.new(0, nData)
         |> Enum.map(& &1*:rand.uniform)
         |> Enum.sort
       end)

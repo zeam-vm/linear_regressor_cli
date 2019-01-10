@@ -9,19 +9,19 @@ use matrix::multi_core::rayon::prelude::*;
 
 use matrix::single_core as sc;
 
-pub fn dot_product_par(x: &Vec<f64>, y: &Vec<f64>) -> f64 {
+pub fn dot_product(x: &Vec<f64>, y: &Vec<f64>) -> f64 {
   x.par_iter().zip(y.par_iter())
   .map(|t| t.0 * t.1)
   .sum()
 }
 
-pub fn sub_par(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+pub fn sub(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
   x.par_iter().zip(y.par_iter())
   .map(|t| t.0 - t.1)
   .collect()
 }
 
-pub fn sub2d_par(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+pub fn sub2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   let row :usize = x.len();
   let col :usize = x[0].len();
 
@@ -35,13 +35,13 @@ pub fn sub2d_par(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   })
   .collect()
 }
-pub fn emult_par(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
+pub fn emult(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
   x.par_iter().zip(y.par_iter())
   .map(|t| t.0 * t.1)
   .collect()
 }
 
-pub fn emult2d_par(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+pub fn emult2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   let row :usize = x.len();
   let col :usize = x[0].len();
 
@@ -56,7 +56,7 @@ pub fn emult2d_par(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   .collect()
 }
 
-pub fn transpose_par(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+pub fn transpose(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
   //swap_rows_cols(x)
 
   let row :usize = x.len();
@@ -72,8 +72,8 @@ pub fn transpose_par(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
   .collect()
 }
 
-pub fn mult_par (x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-  let ty = transpose_par(y);
+pub fn mult(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+  let ty = transpose(y);
 
   x.par_iter()
   .map(|i| {

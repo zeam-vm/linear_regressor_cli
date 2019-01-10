@@ -1,6 +1,6 @@
 defmodule LinearRegressorNif.MultiCore do
   def fit( x, y, alpha, iterations ) do
-    LinearRegressorNif._rayon_fit(
+    LinearRegressorNif.rayon_fit(
       x , 
       y , 
       alpha ,

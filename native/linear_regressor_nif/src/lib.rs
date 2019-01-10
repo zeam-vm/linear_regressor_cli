@@ -9,23 +9,31 @@ mod matrix;
 mod ai_ml;
 mod atoms;
 
-// 関数単位でuseは慣習的ではない(一旦使う)
 use matrix::single_core::nif as single;
-// use Matrix::MultiCore::nif as mlt;
+use matrix::multi_core::nif as multi;
 use ai_ml::linear_regressor::nif as lr;
 
 rustler_export_nifs! {
   "Elixir.LinearRegressorNif",
   [
     //("Elixir's func, number of arguments, Rust's func)
-    ("_dot_product", 2, single::dot_product),
-    ("_zeros", 1, single::zeros),
-    ("_new", 2, single::new),
-    ("_sub", 2, single::sub),
-    ("_emult", 2, single::emult),
-    ("_fit", 4, lr::nif_fit),
-    ("_rayon_fit", 4, lr::rayon_fit), 
-    ("_nif_benchmark", 4, lr::nif_benchmark),
+    
+    ("zeros", 1, single::zeros),
+    ("new", 2, single::new),
+
+    // Single Core
+    ("dot_product", 2, single::dot_product),
+    ("sub", 2, single::sub),
+    ("emult", 2, single::emult),
+    ("fit", 4, lr::nif_fit),
+    
+    // Multi Core
+    ("rayon_dot_product", 2, multi::dot_product),
+    ("rayon_sub", 2, multi::sub),
+    ("rayon_emult", 2, multi::emult),
+    ("rayon_fit", 4, lr::rayon_fit), 
+    
+    ("nif_benchmark", 4, lr::nif_benchmark),
   ],
   None
 }

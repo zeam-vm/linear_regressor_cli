@@ -6,11 +6,11 @@ defmodule LinearRegressorNif.SingleCore do
     when is_list(a) and is_list(b) do
       a
       |> to_float
-      |> LinearRegressorNif._dot_product( b |> to_float )
+      |> LinearRegressorNif.dot_product( b |> to_float )
   end
 
   def fit( x, y, alpha, iterations ) do
-    LinearRegressorNif._fit(
+    LinearRegressorNif.fit(
       x , 
       y , 
       alpha ,
