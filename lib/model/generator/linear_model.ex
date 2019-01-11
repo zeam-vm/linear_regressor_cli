@@ -87,30 +87,28 @@ defmodule LinearModel do
     |> Benchmark.time(true)
   end
 
-  def all_benchmark(nNum \\ 1, nLabel \\ 50, base \\ 1000, offset \\ 100) do
+  def all_benchmark(nNum \\ 1, base \\ 1000, offset \\ 500, nLabel \\ 10) do
     require Integer
 
-    num = 2*nNum
-    nDatas = LinearRegressorNif.SingleCore.new(1, num)
-    |> Enum.filter(& Integer.is_odd(&1))
+    nDatas = LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
 
     rust_result = nDatas
-    |> Enum.map(& { "50, #{&1}", rust_regressor(50, &1) |> elem(0)})
+    |> Enum.map(& { "#{nLabel}, #{&1}", rust_regressor(nLabel, &1) |> elem(0)})
 
     rayon_result = nDatas
-    |> Enum.map(& { "50, #{&1}", rayon_regressor(50, &1) |> elem(0)})
+    |> Enum.map(& { "#{nLabel}, #{&1}", rayon_regressor(nLabel, &1) |> elem(0)})
 
     # rayon_result
-    ratio = 0..(length(nDatas)-1)
+    ratio = 0..(nNum-1)
       |> Enum.map(& {
-        "50, #{Enum.at(nDatas, &1)}",
+        "#{nLabel} #{Enum.at(nDatas, &1)}",
         (Enum.at(rust_result, &1) |> elem(1))
         / (Enum.at(rayon_result, &1) |> elem(1))
         })
 
-    ratio |> Enum.map( & { &1 |> elem(0) |> IO.inspect } )
-    ratio |> Enum.map( & { &1 |> elem(1) |> IO.inspect } )
+    ratio |> Enum.map( & &1 |> elem(0) |> IO.inspect )
+    ratio |> Enum.map( & &1 |> elem(1) |> IO.inspect )
   end
 
   def benchmark do
