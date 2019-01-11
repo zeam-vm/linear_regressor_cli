@@ -52,6 +52,15 @@ pub fn fit_par(
 
   (0..iterations)
     .fold( theta, |theta, _iteration|{
-     multi::sub2d(&theta, &single::emult2d(&single::mult( &tx, &single::sub2d( &single::mult( &x, &theta ), &y ) ), &a))
+     single::sub2d(
+      &theta, 
+      &single::emult2d(
+        &single::mult( 
+          &tx, 
+          &multi::sub2d( 
+            &multi::mult( &x, &theta ), 
+            &y ) 
+          ), 
+        &a))
   })
 }

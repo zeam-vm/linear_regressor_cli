@@ -16,7 +16,7 @@ pub fn dot_product(x: &Vec<f64>, y: &Vec<f64>) -> f64 {
 }
 
 pub fn sub(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
-  x.par_iter().zip(y.par_iter())
+  x.iter().zip(y.iter())
   .map(|t| t.0 - t.1)
   .collect()
 }
@@ -26,7 +26,7 @@ pub fn sub2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   let col :usize = x[0].len();
 
   (0..row)
-  // .into_par_iter()
+  .into_par_iter()
   .map(|r| {
     (0..col)
     // .into_par_iter()
@@ -34,6 +34,10 @@ pub fn sub2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
     .collect()
   })
   .collect()
+
+  // x.par_iter().zip(y.par_iter())
+  // .map(|t| sub(&t.0 as &Vec<f64>, &t.1 as &Vec<f64>))
+  // .collect()
 }
 pub fn emult(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
   x.par_iter().zip(y.par_iter())
@@ -46,10 +50,10 @@ pub fn emult2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   let col :usize = x[0].len();
 
   (0..row)
-  // .into_par_iter()
+  .into_par_iter()
   .map(|r| {
     (0..col)
-    // .into_par_iter()
+    .into_par_iter()
     .map( |c| x[r][c]*y[r][c])
     .collect()
   })
@@ -63,9 +67,10 @@ pub fn transpose(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
   let col :usize = x[0].len();
 
   (0..col)
-  // .into_par_iter()
+  .into_par_iter()
   .map(|c| {
     (0..row)
+    .into_par_iter()
     .map( |r| x[r][c] )
     .collect()
   })
@@ -73,7 +78,7 @@ pub fn transpose(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
 }
 
 pub fn mult(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-  let ty = transpose(y);
+  let ty = sc::transpose(y);
 
   x.par_iter()
   .map(|i| {

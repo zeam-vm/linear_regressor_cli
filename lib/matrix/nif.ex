@@ -26,16 +26,5 @@ defmodule LinearRegressorNif do
   # Multi Core
   def rayon_fit(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
   
-  def nif_benchmark(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
-
-  def benchmark( x, y, alpha, iterations ) do
-    nif_benchmark(
-      x , 
-      y , 
-      alpha ,
-      iterations)
-    receive do
-      l -> l
-    end
-  end
+  def benchmark(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
 end

@@ -33,7 +33,7 @@ rustler_export_nifs! {
     ("rayon_emult", 2, multi::emult),
     ("rayon_fit", 4, lr::rayon_fit), 
     
-    ("nif_benchmark", 4, lr::nif_benchmark),
+    ("benchmark", 4, lr::benchmark),
   ],
   None
 }

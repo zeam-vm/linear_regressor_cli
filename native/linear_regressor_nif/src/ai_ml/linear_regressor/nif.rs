@@ -89,8 +89,7 @@ pub fn rayon_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   Ok(atoms::ok().to_term(env))
 }
 
-
-pub fn nif_benchmark<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
+pub fn benchmark<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   let pid = env.pid();
   let mut my_env = OwnedEnv::new();
 

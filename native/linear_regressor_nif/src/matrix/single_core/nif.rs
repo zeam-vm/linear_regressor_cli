@@ -1,6 +1,10 @@
 use rustler::{Env, Term, NifResult, Encoder};
 use matrix::single_core as sc;
 
+use rustler::env::{OwnedEnv, SavedTerm};
+use rustler::types::tuple::make_tuple;
+use atoms;
+
 pub fn dot_product<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   let x: Vec<f64> = args[0].decode()?;
   let y: Vec<f64> = args[1].decode()?;
@@ -40,8 +44,8 @@ pub fn new<'a>(env: Env<'a>, args: &[Term<'a>]) -> NifResult<Term<'a>> {
           i64,
           i64)>()?; 
         
-        let first: i64 = tuple.0.decode()?;
-        let end: i64 = tuple.1.decode()?;
+        let first: i64 = tuple.0;
+        let end: i64 = tuple.1;
 
         let ans = sc::new(first, end);
 
