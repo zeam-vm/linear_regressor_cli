@@ -20,8 +20,9 @@ defmodule Boston do
       features[ :b ], 
       features[ :lstat ], 
     ]
-    |> Matrix.transpose
-    y_train = [ targets[ :medv ] ] |> Matrix.transpose
+    
+
+    y_train = [ targets[ :medv ] ]
 
     alpha = 0.0000003
     iterations = 10000

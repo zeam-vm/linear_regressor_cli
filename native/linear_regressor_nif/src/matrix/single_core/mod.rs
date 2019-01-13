@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub mod nif;
 
 pub fn dot_product(x: &Vec<f64>, y: &Vec<f64>) -> f64 {
@@ -15,6 +16,16 @@ pub fn sub(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
 pub fn sub2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   x.iter().zip(y.iter())
   .map(|t| sub(&t.0 as &Vec<f64>, &t.1 as &Vec<f64>))
+  .collect()
+}
+
+pub fn scale (x: &Vec<Vec<f64>>, y: f64) -> Vec<Vec<f64>> {
+  x.iter()
+  .map(|r| {
+    r.iter()
+    .map(|c| c*y)
+    .collect()
+  })
   .collect()
 }
 

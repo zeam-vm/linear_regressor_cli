@@ -1,11 +1,23 @@
 defmodule LinearModel do
   require Benchmark
 
+  @nlabel 10
+  @ndata 1000
+
   @doc"""
 
   """
+  def o_n(x, y) do
+    (4*x*y + y) / x
+  end
+
+  def efficiency(x, y) do
+    ratio = o_n(x, y)
+    1 / (1 - 0.01*ratio)
+  end
+
   # this length of model is same as boston 
-  def generator(nLabel \\ 13, nData \\ 506) do
+  def generator(nLabel \\ @nlabel, nData \\ @ndata) do
     x = List.duplicate(0, nLabel)
     |> Enum.map(
       fn _i -> 
@@ -24,7 +36,7 @@ defmodule LinearModel do
     {x, [y]}
   end
 
-  def setup(nLabel \\ 13, nData \\ 506) do
+  def setup(nLabel \\ @nlabel, nData \\ @ndata) do
     {x_train, y_train} = generator(nLabel, nData)
 
     alpha = 0.0000003
@@ -34,61 +46,32 @@ defmodule LinearModel do
     {x_train, y_train, alpha, iterations}
   end
 
-  def rust_fit({x_train, y_train, alpha, iterations}) do
-    LinearRegressorNif.SingleCore.fit( 
-      x_train |> Matrix.transpose, 
-      y_train |> Matrix.transpose, 
-      alpha, 
-      iterations )
-  end
-
-  def rayon_fit({x_train, y_train, alpha, iterations}) do
-    LinearRegressorNif.MultiCore.fit( 
-      x_train |> Matrix.transpose, 
-      y_train |> Matrix.transpose, 
-      alpha, 
-      iterations )
-  end
-
-  # def to_int(num) when is_float(num) do
-  #   num |> Float.floor |> Float.to_string |> Integer.parse |> elem(0)
-  # end
-
-  def variable_thread_benchmark({x_train, y_train, alpha, iterations}) do
-    LinearRegressorNif.benchmark( 
-      x_train |> Matrix.transpose, 
-      y_train |> Matrix.transpose, 
-      alpha, 
-      iterations )
-    receive do
-      l -> l
-    end
-  end
-
-  def rust_regressor(nLabel \\ 13, nData \\ 506) do
+  def rust_regressor(nLabel \\ @nlabel, nData \\ @ndata) do
     {x_train, y_train, alpha, iterations} = setup(nLabel, nData)
     
     LinearRegressorNif.SingleCore.fit( 
-      x_train |> Matrix.transpose, 
-      y_train |> Matrix.transpose, 
+      x_train , 
+      y_train , 
       alpha, 
       iterations )
     |> Benchmark.time(true)
   end
 
-  def rayon_regressor(nLabel \\ 13, nData \\ 506) do
+  def rayon_regressor(nLabel \\ @nlabel, nData \\ @ndata) do
     {x_train, y_train, alpha, iterations} = setup(nLabel, nData)
 
     LinearRegressorNif.MultiCore.fit( 
-      x_train |> Matrix.transpose, 
-      y_train |> Matrix.transpose, 
+      x_train , 
+      y_train , 
       alpha, 
       iterations )
     |> Benchmark.time(true)
   end
 
-  def all_benchmark(nNum \\ 1, base \\ 1000, offset \\ 500, nLabel \\ 10) do
+  def all_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 500, nLabel \\ @nlabel) do
     require Integer
+
+    IO.puts "predict efficiency:#{efficiency(nLabel, base)}"
 
     nDatas = LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
@@ -111,8 +94,15 @@ defmodule LinearModel do
     ratio |> Enum.map( & &1 |> elem(1) |> IO.inspect )
   end
 
-  def benchmark do
-    setup() |> variable_thread_benchmark
+  def rust_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 500, nLabel \\ @nlabel) do
+    LinearRegressorNif.SingleCore.new(0, nNum)
+    |> Enum.map(& &1*offset + base)
+    |> Enum.map(& { "#{nLabel}, #{&1}", rust_regressor(nLabel, &1) |> elem(0)})
   end
 
+  def rayon_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 500, nLabel \\ @nlabel) do
+    LinearRegressorNif.SingleCore.new(0, nNum)
+    |> Enum.map(& &1*offset + base)
+    |> Enum.map(& { "#{nLabel}, #{&1}", rayon_regressor(nLabel, &1) |> elem(0)})
+  end
 end

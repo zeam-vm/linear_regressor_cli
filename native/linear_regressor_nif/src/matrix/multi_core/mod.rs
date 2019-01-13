@@ -21,7 +21,13 @@ pub fn sub(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
   .collect()
 }
 
-pub fn sub2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+pub fn sub2d_xy(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+  x.par_iter().zip(y.par_iter())
+  .map(|t| sub(&t.0 as &Vec<f64>, &t.1 as &Vec<f64>))
+  .collect()
+}
+
+pub fn sub2d_x(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   let row :usize = x.len();
   let col :usize = x[0].len();
 
@@ -29,16 +35,36 @@ pub fn sub2d(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
   .into_par_iter()
   .map(|r| {
     (0..col)
-    // .into_par_iter()
     .map( |c| x[r][c]-y[r][c])
     .collect()
   })
   .collect()
-
-  // x.par_iter().zip(y.par_iter())
-  // .map(|t| sub(&t.0 as &Vec<f64>, &t.1 as &Vec<f64>))
-  // .collect()
 }
+
+pub fn sub2d_y(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>>{
+  let row :usize = x.len();
+  let col :usize = x[0].len();
+
+  (0..row)
+  .map(|r| {
+    (0..col)
+    .into_par_iter()
+    .map( |c| x[r][c]-y[r][c])
+    .collect()
+  })
+  .collect()
+}
+
+pub fn scale (x: &Vec<Vec<f64>>, y: f64) -> Vec<Vec<f64>> {
+  x.par_iter()
+  .map(|r| {
+    r.par_iter()
+    .map(|c| c*y)
+    .collect()
+  })
+  .collect()
+}
+
 pub fn emult(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {
   x.par_iter().zip(y.par_iter())
   .map(|t| t.0 * t.1)
@@ -77,12 +103,38 @@ pub fn transpose(x: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
   .collect()
 }
 
-pub fn mult(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+pub fn mult_x(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
   let ty = sc::transpose(y);
 
   x.par_iter()
   .map(|i| {
     ty.iter()
+    .map(|j| sc::dot_product(&i as &Vec<f64>, &j as &Vec<f64>))
+    .collect()
+  })
+  .collect()
+}
+
+
+pub fn mult_y(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+  let ty = sc::transpose(y);
+
+  x.iter()
+  .map(|i| {
+    ty.par_iter()
+    .map(|j| sc::dot_product(&i as &Vec<f64>, &j as &Vec<f64>))
+    .collect()
+  })
+  .collect()
+}
+
+
+pub fn mult_xy(x: &Vec<Vec<f64>>, y: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+  let ty = sc::transpose(y);
+
+  x.par_iter()
+  .map(|i| {
+    ty.par_iter()
     .map(|j| sc::dot_product(&i as &Vec<f64>, &j as &Vec<f64>))
     .collect()
   })
