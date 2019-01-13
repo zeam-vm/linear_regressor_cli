@@ -4,6 +4,7 @@
 
 extern crate num_cpus;
 extern crate rayon;
+extern crate scoped_pool;
 
 mod matrix;
 mod ai_ml;
