@@ -8,6 +8,22 @@ use rayon::ThreadPool;
 use atoms;
 
 use ai_ml::linear_regressor as lr;
+use std::time::{Instant, Duration};
+
+macro_rules! measure {
+  ( $x:expr) => {
+    {
+      let start = Instant::now();
+      let result = $x;
+      let end = start.elapsed();
+      (result, end)
+    }
+  };
+}
+
+// lazy_static! {
+//   static ref POOL:scoped_pool::Pool = scoped_pool::Pool::new(8);
+// }
 
 pub fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
   let pid = env.pid();
@@ -31,12 +47,17 @@ pub fn nif_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
           f64,
           i64)>()?; 
         
-        let x: Vec<Vec<f64>> = tuple.0.decode()?;
-        let y: Vec<Vec<f64>> = tuple.1.decode()?;
+        let tx: Vec<Vec<f64>> = tuple.0.decode()?;
+        let ty: Vec<Vec<f64>> = tuple.1.decode()?;
         let alpha: f64 = tuple.2;
         let iterations: i64 = tuple.3;
 
-        let ans = lr::fit(&x, &y, alpha, iterations);
+        let mut fit_time :Duration = Duration::new(0, 0);
+        let (ans, fit_ot) = measure!({
+          lr::fit(&tx, &ty, alpha, iterations)
+        });
+        fit_time = fit_time + fit_ot;
+        println!("fit_time:{:?}", fit_time);
 
         Ok(ans.encode(env))
       })();
@@ -71,12 +92,19 @@ pub fn rayon_fit<'a>(env: Env<'a>, args: &[Term<'a>])-> NifResult<Term<'a>> {
           f64,
           i64)>()?; 
         
-        let x: Vec<Vec<f64>> = tuple.0.decode()?;
-        let y: Vec<Vec<f64>> = tuple.1.decode()?;
+        let tx: Vec<Vec<f64>> = tuple.0.decode()?;
+        let ty: Vec<Vec<f64>> = tuple.1.decode()?;
         let alpha: f64 = tuple.2;
         let iterations: i64 = tuple.3;
 
-        let ans = lr::fit_par(&x, &y, alpha, iterations);
+        let mut fit_time :Duration = Duration::new(0, 0);
+
+        let (ans, fit_ot) = measure!({
+          lr::fit_par(&tx, &ty, alpha, iterations)
+        });
+        fit_time = fit_time + fit_ot;
+        println!("fit_time:{:?}", fit_time);
+        // println!("theta:{:?}", ans);
 
         Ok(ans.encode(env))
       })();
