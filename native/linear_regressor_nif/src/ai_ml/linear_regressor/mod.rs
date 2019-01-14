@@ -33,10 +33,12 @@ pub fn fit(
         a))
   });
 
+  // println!("{:?}", ans);
+
   ans
 }
 
-pub fn fit_par(
+pub fn fit_filled_rayon(
   tx: &Vec<Vec<f64>>, 
   ty: &Vec<Vec<f64>>, 
   alpha: f64,
@@ -45,6 +47,37 @@ pub fn fit_par(
   
   let x = multi::transpose(&tx);
   let y = multi::transpose(&ty);
+  let m = y.len() as f64;
+  // let (row, col) = (theta.len(), theta[0].len());
+  let (_row, col) = (x.len(), x[0].len());
+  let a = alpha/m;
+  // let a :Vec<Vec<f64>> = vec![vec![tmp; col]; _row]; 
+  let theta = vec![vec![0.0; 1]; col];
+
+  (0..iterations)
+    .fold( theta, |theta, _iteration|{
+     multi::sub2d_xy(
+      &theta,  
+      &multi::scale(
+        &multi::mult_xy( 
+          &tx, 
+          &multi::sub2d_xy( 
+            &multi::mult_xy( &x, &theta ), 
+            &y ) 
+          ), 
+        a))
+  })
+}
+
+pub fn fit_little_rayon(
+  tx: &Vec<Vec<f64>>, 
+  ty: &Vec<Vec<f64>>, 
+  alpha: f64,
+  iterations: i64
+  ) -> Vec<Vec<f64>>{
+  
+  let x = multi::transpose(&tx);
+  let y = single::transpose(&ty);
   let m = y.len() as f64;
   // let (row, col) = (theta.len(), theta[0].len());
   let (_row, col) = (x.len(), x[0].len());

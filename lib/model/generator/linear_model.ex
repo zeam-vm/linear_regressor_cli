@@ -8,7 +8,8 @@ defmodule LinearModel do
 
   """
   def o_n(x, y) do
-    (4*x*y + y) / x
+    # 並列処理時の計算量 / 逐次処理の計算量
+    x*y / (4*x*y + x)
   end
 
   def efficiency(x, y) do
@@ -68,7 +69,18 @@ defmodule LinearModel do
     |> Benchmark.time(true)
   end
 
-  def all_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 500, nLabel \\ @nlabel) do
+  def filled_rayon(nLabel \\ @nlabel, nData \\ @ndata) do
+    {x_train, y_train, alpha, iterations} = setup(nLabel, nData)
+
+    LinearRegressorNif.MultiCore.fit_filled_rayon( 
+      x_train , 
+      y_train , 
+      alpha, 
+      iterations )
+    |> Benchmark.time(true)
+  end
+
+  def all_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 1000, nLabel \\ @nlabel) do
     require Integer
 
     IO.puts "predict efficiency:#{efficiency(nLabel, base)}"
@@ -82,27 +94,63 @@ defmodule LinearModel do
     rayon_result = nDatas
     |> Enum.map(& { "#{nLabel}, #{&1}", rayon_regressor(nLabel, &1) |> elem(0)})
 
+    # filled_rayon_result = nDatas
+    # |> Enum.map(& { "#{nLabel}, #{&1}", filled_rayon(nLabel, &1) |> elem(0)})
+
     # rayon_result
-    ratio = 0..(nNum-1)
+    ratio_little_rayon = 0..(nNum-1)
       |> Enum.map(& {
         "#{nLabel} #{Enum.at(nDatas, &1)}",
         (Enum.at(rust_result, &1) |> elem(1))
         / (Enum.at(rayon_result, &1) |> elem(1))
         })
 
-    ratio |> Enum.map( & &1 |> elem(0) |> IO.inspect )
-    ratio |> Enum.map( & &1 |> elem(1) |> IO.inspect )
+
+    # ratio_little_rayon |> Enum.map( & &1 |> elem(0) |> IO.inspect )
+    # ratio_little_rayon |> Enum.map( & &1 |> elem(1) |> IO.inspect )
+
+    # ratio_filled_rayon = 0..(nNum-1)
+    #   |> Enum.map(& {
+    #     "#{nLabel} #{Enum.at(nDatas, &1)}",
+    #     (Enum.at(rust_result, &1) |> elem(1))
+    #     / (Enum.at(filled_rayon_result, &1) |> elem(1))
+    #     })
+
+    # ratio_filled_rayon |> Enum.map( & &1 |> elem(0) |> IO.inspect )
+    # ratio_filled_rayon |> Enum.map( & &1 |> elem(1) |> IO.inspect )
+
+    result = 0..(nNum-1)
+    |> Enum.map(& 
+        [
+          nLabel,
+          Enum.at(nDatas, &1),
+          Enum.at(rust_result, &1) |> elem(1) |> Kernel./(1_000_000),
+          Enum.at(rayon_result, &1) |> elem(1) |> Kernel./(1_000_000),
+          # ,(Enum.at(filled_rayon_result, &1) |> elem(1)),
+          Enum.at(ratio_little_rayon, &1) |> elem(1)
+        ])
+
+    "ratio.txt"|> File.write( 
+      result 
+      |> Enum.map(& (&1 |> Enum.map(fn x ->  "& #{x} " end)) ++ ["\n"] )
+        )
   end
 
-  def rust_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 500, nLabel \\ @nlabel) do
+  def rust_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 1000, nLabel \\ @nlabel) do
     LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
     |> Enum.map(& { "#{nLabel}, #{&1}", rust_regressor(nLabel, &1) |> elem(0)})
   end
 
-  def rayon_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 500, nLabel \\ @nlabel) do
+  def rayon_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 1000, nLabel \\ @nlabel) do
     LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
     |> Enum.map(& { "#{nLabel}, #{&1}", rayon_regressor(nLabel, &1) |> elem(0)})
+  end
+
+  def benchmark_filled_rayon(nNum \\ 1, base \\ @ndata, offset \\ 1000, nLabel \\ @nlabel) do
+    LinearRegressorNif.SingleCore.new(0, nNum)
+    |> Enum.map(& &1*offset + base)
+    |> Enum.map(& { "#{nLabel}, #{&1}", filled_rayon(nLabel, &1) |> elem(0)})
   end
 end

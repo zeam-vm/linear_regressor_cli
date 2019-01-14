@@ -32,9 +32,11 @@ rustler_export_nifs! {
     ("rayon_dot_product", 2, multi::dot_product),
     ("rayon_sub", 2, multi::sub),
     ("rayon_emult", 2, multi::emult),
-    ("rayon_fit", 4, lr::rayon_fit), 
-    
-    ("benchmark", 4, lr::benchmark),
+    ("fit_little_rayon", 4, lr::fit_little_rayon), 
+    ("fit_filled_rayon", 4, lr::fit_filled_rayon),
+
+    ("benchmark_filled_rayon", 4, lr::benchmarks_fit_filled_rayon),
+    ("benchmark_little_rayon", 4, lr::benchmarks_fit_little_rayon),
   ],
   None
 }

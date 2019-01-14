@@ -24,7 +24,9 @@ defmodule LinearRegressorNif do
   def fit(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
   
   # Multi Core
-  def rayon_fit(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
-  
-  def benchmark(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
+  def fit_little_rayon(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
+  def fit_filled_rayon(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
+
+  def benchmark_filled_rayon(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
+  def benchmark_little_rayon(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)
 end

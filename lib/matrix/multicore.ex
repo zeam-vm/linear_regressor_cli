@@ -1,6 +1,6 @@
 defmodule LinearRegressorNif.MultiCore do
   def fit( x, y, alpha, iterations ) do
-    LinearRegressorNif.rayon_fit(
+    LinearRegressorNif.fit_little_rayon(
       x , 
       y , 
       alpha ,
@@ -10,8 +10,30 @@ defmodule LinearRegressorNif.MultiCore do
     end
   end
 
-  def benchmark( x, y, alpha, iterations ) do
-    LinearRegressorNif.benchmark(
+  def fit_filled_rayon( x, y, alpha, iterations ) do
+    LinearRegressorNif.fit_filled_rayon(
+      x , 
+      y , 
+      alpha ,
+      iterations)
+    receive do
+      l -> l
+    end
+  end
+
+  def benchmark_filled_rayon( x, y, alpha, iterations ) do
+    LinearRegressorNif.benchmark_filled_rayon(
+      x , 
+      y , 
+      alpha ,
+      iterations)
+    receive do
+      l -> l
+    end
+  end
+
+  def benchmark_little_rayon( x, y, alpha, iterations ) do
+    LinearRegressorNif.benchmark_little_rayon(
       x , 
       y , 
       alpha ,

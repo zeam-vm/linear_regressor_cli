@@ -60,6 +60,7 @@ end
   end
 
     defp dot_product(r1, _r2) when r1 == [], do: 0
+    defp dot_product(_r1, r2) when r2 == [], do: 0
     defp dot_product(r1, r2) do
       [h1|t1] = r1
       [h2|t2] = r2
