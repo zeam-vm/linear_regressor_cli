@@ -1,24 +1,9 @@
 defmodule LinearModel do
-  require Benchmark
-
-  @nlabel 10
-  @ndata 1000
-
-  @doc"""
+  @doc """
 
   """
-  def o_n(x, y) do
-    # 並列処理時の計算量 / 逐次処理の計算量
-    x*y / (4*x*y + x)
-  end
-
-  def efficiency(x, y) do
-    ratio = o_n(x, y)
-    1 / (1 - 0.01*ratio)
-  end
-
   # this length of model is same as boston 
-  def generator(nLabel \\ @nlabel, nData \\ @ndata) do
+  def generator(nLabel \\ 13, nData \\ 506) do
     x = List.duplicate(0, nLabel)
     |> Enum.map(
       fn _i -> 
@@ -37,7 +22,7 @@ defmodule LinearModel do
     {x, [y]}
   end
 
-  def setup(nLabel \\ @nlabel, nData \\ @ndata) do
+  def setup(nLabel \\ 13, nData \\ 506) do
     {x_train, y_train} = generator(nLabel, nData)
 
     alpha = 0.0000003
@@ -46,8 +31,37 @@ defmodule LinearModel do
 
     {x_train, y_train, alpha, iterations}
   end
+end
 
-  def rust_regressor(nLabel \\ @nlabel, nData \\ @ndata) do
+defmodule LinearModel.Params do
+  def nlabel,  do: 10
+  def ndata, do: 1000
+end
+
+defmodule LinearModel.Regressor do 
+  require Benchmark
+  import LinearModel
+  alias LinearModel.Params
+
+  @doc """
+  
+  """
+  def purelixir(nLabel \\ Params.nlabel, nData \\ Params.ndata) do
+    
+  end
+
+  @doc """
+  
+  """
+  def elixir_inlining(nLabel \\ Params.nlabel, nData \\ Params.ndata) do
+    
+  end
+
+
+  @doc """
+  
+  """
+  def rust(nLabel \\ Params.nlabel, nData \\ Params.ndata) do
     {x_train, y_train, alpha, iterations} = setup(nLabel, nData)
     
     LinearRegressorNif.SingleCore.fit( 
@@ -58,7 +72,10 @@ defmodule LinearModel do
     |> Benchmark.time(true)
   end
 
-  def rayon_regressor(nLabel \\ @nlabel, nData \\ @ndata) do
+  @doc """
+  A part of functions are filled by rayon because this is faster.
+  """
+  def part_rayon(nLabel \\ Params.nlabel, nData \\ Params.ndata) do
     {x_train, y_train, alpha, iterations} = setup(nLabel, nData)
 
     LinearRegressorNif.MultiCore.fit( 
@@ -69,7 +86,10 @@ defmodule LinearModel do
     |> Benchmark.time(true)
   end
 
-  def filled_rayon(nLabel \\ @nlabel, nData \\ @ndata) do
+  @doc """
+  all functions are filled by rayon
+  """
+  def filled_rayon(nLabel \\ Params.nlabel, nData \\ Params.ndata) do
     {x_train, y_train, alpha, iterations} = setup(nLabel, nData)
 
     LinearRegressorNif.MultiCore.fit_filled_rayon( 
@@ -79,20 +99,31 @@ defmodule LinearModel do
       iterations )
     |> Benchmark.time(true)
   end
+end
 
-  def all_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 1000, nLabel \\ @nlabel) do
+defmodule LinearModel.Benchmark do
+  require Benchmark
+  alias LinearModel.Params
+  
+  @moduledoc """
+  benchmarks for linear regression.
+  """
+
+  @doc """
+  Benchmark linear regression by rust and rayon.
+  Also distplay sppedup efficiency.
+  """
+  def all_benchmark(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
     require Integer
-
-    IO.puts "predict efficiency:#{efficiency(nLabel, base)}"
 
     nDatas = LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
 
     rust_result = nDatas
-    |> Enum.map(& { "#{nLabel}, #{&1}", rust_regressor(nLabel, &1) |> elem(0)})
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.rust(nLabel, &1) |> elem(0)})
 
     rayon_result = nDatas
-    |> Enum.map(& { "#{nLabel}, #{&1}", rayon_regressor(nLabel, &1) |> elem(0)})
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.part_rayon(nLabel, &1) |> elem(0)})
 
     # filled_rayon_result = nDatas
     # |> Enum.map(& { "#{nLabel}, #{&1}", filled_rayon(nLabel, &1) |> elem(0)})
@@ -136,21 +167,59 @@ defmodule LinearModel do
         )
   end
 
-  def rust_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 1000, nLabel \\ @nlabel) do
-    LinearRegressorNif.SingleCore.new(0, nNum)
+  @doc """
+  Benchmark linear regression by rust and rayon.
+  Also distplay sppedup efficiency.
+  """
+  def benchmarks(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+    nDatas = LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
-    |> Enum.map(& { "#{nLabel}, #{&1}", rust_regressor(nLabel, &1) |> elem(0)})
+
+    rust_result = nDatas
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.rust(nLabel, &1) |> elem(0)})
+
+    rayon_result = nDatas
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.part_rayon(nLabel, &1) |> elem(0)})
   end
 
-  def rayon_benchmark(nNum \\ 1, base \\ @ndata, offset \\ 1000, nLabel \\ @nlabel) do
-    LinearRegressorNif.SingleCore.new(0, nNum)
-    |> Enum.map(& &1*offset + base)
-    |> Enum.map(& { "#{nLabel}, #{&1}", rayon_regressor(nLabel, &1) |> elem(0)})
+  @doc """
+  
+  """
+  def purelixir(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+
   end
 
-  def benchmark_filled_rayon(nNum \\ 1, base \\ @ndata, offset \\ 1000, nLabel \\ @nlabel) do
+  @doc """
+  
+  """
+  def elixir_inlining(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+
+  end
+
+  @doc """
+
+  """
+  def rust(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
     LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
-    |> Enum.map(& { "#{nLabel}, #{&1}", filled_rayon(nLabel, &1) |> elem(0)})
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.rust(nLabel, &1) |> elem(0)})
+  end
+  
+  @doc """
+
+  """
+  def part_rayon(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+    LinearRegressorNif.SingleCore.new(0, nNum)
+    |> Enum.map(& &1*offset + base)
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.part_rayon(nLabel, &1) |> elem(0)})
+  end
+
+  @doc """
+
+  """
+  def filled_rayon(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+    LinearRegressorNif.SingleCore.new(0, nNum)
+    |> Enum.map(& &1*offset + base)
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.filled_rayon(nLabel, &1) |> elem(0)})
   end
 end

@@ -3,9 +3,9 @@
 pub mod nif;
 
 extern crate rayon;
+extern crate scoped_pool;
+
 use matrix::multi_core::rayon::prelude::*;
-// use Matrix::MultiCore::rayon::ThreadPool;
-// use Matrix::MultiCore::rayon::ThreadPoolBuildError;
 
 use matrix::single_core as sc;
 

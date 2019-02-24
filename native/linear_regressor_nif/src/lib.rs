@@ -5,6 +5,7 @@
 extern crate num_cpus;
 extern crate rayon;
 extern crate scoped_pool;
+extern crate ocl;
 
 mod matrix;
 mod ai_ml;
@@ -12,6 +13,7 @@ mod atoms;
 
 use matrix::single_core::nif as single;
 use matrix::multi_core::nif as multi;
+use matrix::gpu::nif as gpu;
 use ai_ml::linear_regressor::nif as lr;
 
 rustler_export_nifs! {
@@ -34,6 +36,10 @@ rustler_export_nifs! {
     ("rayon_emult", 2, multi::emult),
     ("fit_little_rayon", 4, lr::fit_little_rayon), 
     ("fit_filled_rayon", 4, lr::fit_filled_rayon),
+
+    // GPGPU
+    ("gpuinfo", 0, gpu::gpuinfo),
+     
 
     ("benchmark_filled_rayon", 4, lr::benchmarks_fit_filled_rayon),
     ("benchmark_little_rayon", 4, lr::benchmarks_fit_little_rayon),

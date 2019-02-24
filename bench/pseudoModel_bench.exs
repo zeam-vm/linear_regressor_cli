@@ -54,7 +54,7 @@ defmodule PseudoModelBench do
   # ]
   # end
 
-  bench "Speed up efficiency", [] do
-    LinearModel.all_benchmark 5
-  end
+  # bench "Speed up efficiency", [] do
+  #   LinearModel.all_benchmark 5
+  # end
 end
