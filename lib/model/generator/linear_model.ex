@@ -34,7 +34,9 @@ defmodule LinearModel do
 end
 
 defmodule LinearModel.Params do
-  def nlabel,  do: 10
+  def count, do: 5
+  def base, do: 1000
+  def nlabel,  do: 50
   def ndata, do: 1000
 end
 
@@ -46,15 +48,33 @@ defmodule LinearModel.Regressor do
   @doc """
   
   """
-  def purelixir(nLabel \\ Params.nlabel, nData \\ Params.ndata) do
-    
+  def elixir(nLabel \\ Params.nlabel, nData \\ Params.ndata) do
+    {x_train, y_train, alpha, iterations} = setup(nLabel, nData)
+    theta = List.duplicate([0.0], nLabel)
+
+    LinearRegressor.fit( 
+      x_train |> Matrix.transpose, 
+      y_train|> Matrix.transpose, 
+      theta, 
+      alpha, 
+      iterations )
+    |> Benchmark.time(true)
   end
 
   @doc """
   
   """
   def elixir_inlining(nLabel \\ Params.nlabel, nData \\ Params.ndata) do
-    
+    {x_train, y_train, alpha, iterations} = setup(nLabel, nData)
+    theta = List.duplicate([0.0], nLabel)
+
+    LinearRegressor.Inlining.fit(
+     x_train |> Matrix.transpose, 
+     y_train|> Matrix.transpose, 
+     theta, 
+     alpha, 
+     iterations )
+    |> Benchmark.time(true)
   end
 
 
@@ -171,55 +191,63 @@ defmodule LinearModel.Benchmark do
   Benchmark linear regression by rust and rayon.
   Also distplay sppedup efficiency.
   """
-  def benchmarks(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
-    nDatas = LinearRegressorNif.SingleCore.new(0, nNum)
+  def run(nNum \\ 5, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+    elixir(nNum, base, offset, nLabel)
+    elixir_inlining(nNum, base, offset, nLabel)
+    rust(nNum, base, offset, nLabel)
+    part_rayon(nNum, base, offset, nLabel)
+    filled_rayon(nNum, base, offset, nLabel)
+  end
+
+  def time({time, _}),  do: time |> Kernel./(1_000_000)
+
+  @doc """
+  
+  """
+  def elixir(nNum \\ Params.count, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+    LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
-
-    rust_result = nDatas
-    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.rust(nLabel, &1) |> elem(0)})
-
-    rayon_result = nDatas
-    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.part_rayon(nLabel, &1) |> elem(0)})
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.elixir(nLabel, &1) |> time })
+    |> IO.inspect(label: "pure elixir")
   end
 
   @doc """
   
   """
-  def purelixir(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
-
-  end
-
-  @doc """
-  
-  """
-  def elixir_inlining(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
-
-  end
-
-  @doc """
-
-  """
-  def rust(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+  def elixir_inlining(nNum \\ Params.count, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
     LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
-    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.rust(nLabel, &1) |> elem(0)})
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.elixir_inlining(nLabel, &1) |> time })
+    |> IO.inspect(label: "elixir inlining")
+  end
+
+  @doc """
+
+  """
+  def rust(nNum \\ Params.count, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+    LinearRegressorNif.SingleCore.new(0, nNum)
+    |> Enum.map(& &1*offset + base)
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.rust(nLabel, &1) |> time })
+    |> IO.inspect(label: "rust: single core")
   end
   
   @doc """
 
   """
-  def part_rayon(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+  def part_rayon(nNum \\ Params.count, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
     LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
-    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.part_rayon(nLabel, &1) |> elem(0)})
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.part_rayon(nLabel, &1) |> time })
+    |> IO.inspect(label: "rust: multi core")
   end
 
   @doc """
 
   """
-  def filled_rayon(nNum \\ 1, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
+  def filled_rayon(nNum \\ Params.count, base \\ Params.ndata, offset \\ 1000, nLabel \\ Params.nlabel) do
     LinearRegressorNif.SingleCore.new(0, nNum)
     |> Enum.map(& &1*offset + base)
-    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.filled_rayon(nLabel, &1) |> elem(0)})
+    |> Enum.map(& { "#{nLabel}, #{&1}", LinearModel.Regressor.filled_rayon(nLabel, &1) |> time})
+    |> IO.inspect(label: "rustl: optimized multi core")
   end
 end
