@@ -29,6 +29,7 @@ defmodule LinearRegressorNif do
 
   # GPGPU
   def gpuinfo(), do: exit(:nif_not_loaded)
+  def gpu_dot_product(_, _), do: exit(:nif_not_loaded)
 
   # benchmark
   def benchmark_filled_rayon(_x, _y, _alpha, _iteration), do: exit(:nif_not_loaded)

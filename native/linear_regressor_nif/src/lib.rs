@@ -39,7 +39,7 @@ rustler_export_nifs! {
 
     // GPGPU
     ("gpuinfo", 0, gpu::gpuinfo),
-     
+    ("gpu_dot_product", 2, gpu::call_ocl_dp),
 
     ("benchmark_filled_rayon", 4, lr::benchmarks_fit_filled_rayon),
     ("benchmark_little_rayon", 4, lr::benchmarks_fit_little_rayon),

@@ -59,9 +59,9 @@ end
     [h1-h2] ++ subtract_rows(t1,t2)
   end
 
-    defp dot_product(r1, _r2) when r1 == [], do: 0
-    defp dot_product(_r1, r2) when r2 == [], do: 0
-    defp dot_product(r1, r2) do
+    def dot_product(r1, _r2) when r1 == [], do: 0
+    def dot_product(_r1, r2) when r2 == [], do: 0
+    def dot_product(r1, r2) do
       [h1|t1] = r1
       [h2|t2] = r2
       (h1*h2) + dot_product(t1, t2)
