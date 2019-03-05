@@ -8,7 +8,7 @@ defmodule LinearRegressorNif.GPU do
         b |> to_float )
 
       receive do
-        ans -> ans |> IO.inspect(label: "Answer")
+        ans -> ans
       end
   end
 end

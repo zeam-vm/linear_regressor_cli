@@ -4,7 +4,6 @@ defmodule LinearRegressorNif.MultiCore do
   def dot_product(a, b)
     when is_list(a) and is_list(b) do
       LinearRegressorNif.rayon_dot_product(a |> to_float, b |> to_float )
-      |> IO.inspect(label: "Answer")
   end
   
   def fit( x, y, alpha, iterations ) do

@@ -26,17 +26,17 @@ defmodule BostonModelBench do
   #   LinearRegressorNif.MultiCore.fit_filled_rayon(x_train, y_train, alpha, iterations)
   # end
 
-  defp setup do
-    Boston.setup
-  end
+  # defp setup do
+  #   Boston.setup
+  # end
 
-  defp setup_ex do
-  [x_train, y_train, alpha, iterations] = Boston.setup
-  [
-    x_train |> Matrix.transpose, 
-    y_train |> Matrix.transpose, 
-    alpha, 
-    iterations
-  ]
-  end
+  # defp setup_ex do
+  # [x_train, y_train, alpha, iterations] = Boston.setup
+  # [
+  #   x_train |> Matrix.transpose, 
+  #   y_train |> Matrix.transpose, 
+  #   alpha, 
+  #   iterations
+  # ]
+  # end
 end
